@@ -2,6 +2,7 @@ package com.jmapps.dayclose.ui_screens
 
 
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -48,12 +49,21 @@ import compose.icons.fontawesomeicons.solid.MoneyBillWaveAlt
 import org.koin.androidx.compose.koinViewModel
 
 
+@SuppressLint("SuspiciousIndentation")
 @Composable
 fun MainAppScreen(navController: NavController) {
 
+//    var showOpeningDialog by remember { mutableStateOf(false) }
+//    var showClosingDialog by remember { mutableStateOf(false) }
+//    var showAddExpenseDialog by remember { mutableStateOf(false) }
     var showOpeningDialog by remember { mutableStateOf(false) }
+    var showEditOpeningDialog by remember { mutableStateOf(false) }
+
     var showClosingDialog by remember { mutableStateOf(false) }
+    var showEditClosingDialog by remember { mutableStateOf(false) }
+
     var showAddExpenseDialog by remember { mutableStateOf(false) }
+
 
 
     val dayDataViewModel: DayDataViewModel= koinViewModel()
@@ -77,6 +87,15 @@ fun MainAppScreen(navController: NavController) {
                 netProfit = 0f
             )
         )
+
+
+
+    val hasDay = todaySummary.dayId.isNotEmpty()
+
+    val isDayOpen = hasDay && todaySummary.closedAt == null
+
+    val isDayClosed = hasDay && todaySummary.closedAt != null
+
 
         Column(
             modifier = Modifier
@@ -149,12 +168,51 @@ fun MainAppScreen(navController: NavController) {
             modifier = Modifier.padding(top = 8.dp)
         )
 
+//        ActionGrid(
+//            onAddOpenCash = { showOpeningDialog = true },
+//            onAddExpense = { showAddExpenseDialog = true },
+//            onCloseDay = { showClosingDialog= true },
+//            onViewAllExpense = { navController.navigate("dailyExpense/29-01-2026") }
+//        )
+
+
         ActionGrid(
-            onAddOpenCash = { showOpeningDialog = true },
-            onAddExpense = { showAddExpenseDialog = true },
-            onCloseDay = { showClosingDialog= true },
-            onViewAllExpense = { navController.navigate("dailyExpense/29-01-2026") }
+            openingLabel = if (hasDay) "Edit Opening" else "Opening",
+
+            closingLabel = when {
+                isDayClosed -> "Edit Closing"
+                isDayOpen -> "Close Day"
+                else -> "Close Day"
+            },
+
+            onAddOpenCash = {
+                if (hasDay) {
+                    showEditOpeningDialog = true
+                } else {
+                    showOpeningDialog = true
+                }
+            },
+
+            onAddExpense = {
+                if (isDayOpen) {
+                    showAddExpenseDialog = true
+                }
+            },
+
+            onCloseDay = {
+                when {
+                    isDayClosed -> showEditClosingDialog = true
+                    isDayOpen -> showClosingDialog = true
+                }
+            },
+
+            onViewAllExpense = {
+                navController.navigate("dailyExpense/$todayDate")
+            }
         )
+
+
+
     }
 }
 
@@ -284,22 +342,71 @@ fun SmallStatCard(title: String, amount: String, icon: ImageVector, color: Color
     }
 }
 
+//@Composable
+//fun ActionGrid(
+//    onAddOpenCash: () -> Unit,
+//    onAddExpense: () -> Unit,
+//    onCloseDay: () -> Unit,
+//    onViewAllExpense: () -> Unit
+//) {
+//    // A clean 2x2 grid using standard modifiers
+//    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+//        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+//            ModernActionButton("Opening", Icons.Default.Add, colorResource(id = R.color.seaweed), onAddOpenCash, Modifier.weight(1f))
+//            ModernActionButton("Expense", Icons.Default.Create, colorResource(id = R.color.yale_blue), onAddExpense, Modifier.weight(1f))
+//        }
+//        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+//            ModernActionButton("Close Day", Icons.Default.Lock, colorResource(id = R.color.oxford_navy), onCloseDay, Modifier.weight(1f))
+//            ModernActionButton("History", FontAwesomeIcons.Solid.FileInvoiceDollar, colorResource(id = R.color.oxford_navy), onViewAllExpense, Modifier.weight(1f))
+//        }
+//    }
+//}
+
 @Composable
 fun ActionGrid(
+    openingLabel: String,
+    closingLabel: String,
     onAddOpenCash: () -> Unit,
     onAddExpense: () -> Unit,
     onCloseDay: () -> Unit,
     onViewAllExpense: () -> Unit
 ) {
-    // A clean 2x2 grid using standard modifiers
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ModernActionButton("Opening", Icons.Default.Add, colorResource(id = R.color.seaweed), onAddOpenCash, Modifier.weight(1f))
-            ModernActionButton("Expense", Icons.Default.Create, colorResource(id = R.color.yale_blue), onAddExpense, Modifier.weight(1f))
+            ModernActionButton(
+                openingLabel,
+                Icons.Default.Add,
+                colorResource(id = R.color.seaweed),
+                onAddOpenCash,
+                Modifier.weight(1f)
+            )
+
+            ModernActionButton(
+                "Expense",
+                Icons.Default.Create,
+                colorResource(id = R.color.yale_blue),
+                onAddExpense,
+                Modifier.weight(1f)
+            )
         }
+
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ModernActionButton("Close Day", Icons.Default.Lock, colorResource(id = R.color.oxford_navy), onCloseDay, Modifier.weight(1f))
-            ModernActionButton("History", FontAwesomeIcons.Solid.FileInvoiceDollar, colorResource(id = R.color.oxford_navy), onViewAllExpense, Modifier.weight(1f))
+            ModernActionButton(
+                closingLabel,
+                Icons.Default.Lock,
+                colorResource(id = R.color.oxford_navy),
+                onCloseDay,
+                Modifier.weight(1f)
+            )
+
+            ModernActionButton(
+                "History",
+                FontAwesomeIcons.Solid.FileInvoiceDollar,
+                colorResource(id = R.color.oxford_navy),
+                onViewAllExpense,
+                Modifier.weight(1f)
+            )
         }
     }
 }
