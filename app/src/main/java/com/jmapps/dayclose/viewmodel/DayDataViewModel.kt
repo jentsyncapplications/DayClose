@@ -105,6 +105,11 @@ class DayDataViewModel(
         return repository.getDaySummaryById(dayId)
     }
 
+    // Get summary for a specific date.
+    fun getDaySummaryByDate(dayDate: String): Flow<DaySummary> {
+        return repository.getDaySummaryByDate(dayDate)
+    }
+
 
     /* -------------------- DELETE -------------------- */
 

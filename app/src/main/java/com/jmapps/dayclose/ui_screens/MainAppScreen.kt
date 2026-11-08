@@ -28,21 +28,24 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
+import com.jmapps.dayclose.model.DaySummary
 import com.jmapps.dayclose.navigationgraph.Screen
 import com.jmapps.dayclose.ui_screens.components.AddExpensePopup
 import com.jmapps.dayclose.ui_screens.components.DayClosePopup
 import com.jmapps.dayclose.ui_screens.components.DayOpenPopup
 import com.jmapps.dayclose.utils.getGreeting
+import com.jmapps.dayclose.utils.standardDateFormat
+import com.jmapps.dayclose.viewmodel.DayDataViewModel
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
 import compose.icons.fontawesomeicons.solid.ChartBar
 import compose.icons.fontawesomeicons.solid.FileInvoiceDollar
 import compose.icons.fontawesomeicons.solid.MoneyBillAlt
 import compose.icons.fontawesomeicons.solid.MoneyBillWaveAlt
-
-
+import org.koin.androidx.compose.koinViewModel
 
 
 @Composable
@@ -51,6 +54,29 @@ fun MainAppScreen(navController: NavController) {
     var showOpeningDialog by remember { mutableStateOf(false) }
     var showClosingDialog by remember { mutableStateOf(false) }
     var showAddExpenseDialog by remember { mutableStateOf(false) }
+
+
+    val dayDataViewModel: DayDataViewModel= koinViewModel()
+
+    val todayDate = standardDateFormat(System.currentTimeMillis())
+
+    val todaySummary by dayDataViewModel
+        .getDaySummaryByDate(todayDate)
+        .collectAsStateWithLifecycle(
+            initialValue = DaySummary(
+                id = 0,
+                dayId = "",
+                date = todayDate,
+                openingCash = 0f,
+                closingCash = 0f,
+                openedAt = 0L,
+                closedAt = null,
+                note = null,
+                timestamp = 0L,
+                totalExpense = 0f,
+                netProfit = 0f
+            )
+        )
 
         Column(
             modifier = Modifier
@@ -94,14 +120,14 @@ fun MainAppScreen(navController: NavController) {
         ) {
             SmallStatCard(
                 title = "Opening",
-                amount = "12,500",
+                amount = todaySummary.openingCash.toString(),
                 icon = FontAwesomeIcons.Solid.MoneyBillAlt,
                 color = colorResource(id = R.color.seaweed),
                 modifier = Modifier.weight(1f)
             )
             SmallStatCard(
                 title = "Closing",
-                amount = "18,300",
+                amount = todaySummary.closingCash.toString(),
                 icon = FontAwesomeIcons.Solid.MoneyBillWaveAlt,
                 color = colorResource(id = R.color.oxford_navy),
                 modifier = Modifier.weight(1f)
@@ -110,10 +136,10 @@ fun MainAppScreen(navController: NavController) {
         Spacer(modifier = Modifier.height(8.dp))
 
         // 1. HERO SECTION: Net Profit with Gradient
-        ProfitHeroCard(amount = "KES 20,000")
+        ProfitHeroCard(amount = todaySummary.netProfit.toString())
         Spacer(modifier = Modifier.height(8.dp))
         // 3. EXPENSE HIGHLIGHT
-        ExpenseCard(amount = "KES 30,000")
+        ExpenseCard(amount = todaySummary.totalExpense.toString())
         Spacer(modifier = Modifier.height(8.dp))
         // 4. ACTION GRID
         Text(

@@ -96,6 +96,11 @@ class DayDataRepository(
     }
 
 
+    // Get summary for a specific date.
+    fun getDaySummaryByDate(dayDate: String): Flow<DaySummary> {
+        return dayDataDao.getDaySummaryByDate(dayDate)
+    }
+
     /* -------------------- DELETE -------------------- */
 
     // Delete a business day using dayId

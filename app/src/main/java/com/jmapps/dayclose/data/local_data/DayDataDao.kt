@@ -223,6 +223,45 @@ interface DayDataDao {
     fun getDaySummaryById(dayId: String): Flow<DaySummary?>
 
 
+
+
+
+
+    // Get a summary for one specific business day by date.
+// Returns zero values when no business day exists or closing cash has not been added.
+    @Query("""
+    SELECT
+        COALESCE(d.id, 0) AS id,
+        COALESCE(d.dayId, '') AS dayId,
+        :dayDate AS date,
+        COALESCE(d.openingCash, 0.0) AS openingCash,
+        COALESCE(d.closingCash, 0.0) AS closingCash,
+        COALESCE(d.openedAt, 0) AS openedAt,
+        d.closedAt AS closedAt,
+        d.note AS note,
+        COALESCE(d.timestamp, 0) AS timestamp,
+
+        COALESCE(SUM(e.totalExpense), 0.0) AS totalExpense,
+
+        COALESCE(d.closingCash, 0.0)
+            - COALESCE(d.openingCash, 0.0)
+            - COALESCE(SUM(e.totalExpense), 0.0) AS netProfit
+
+    FROM (SELECT :dayDate AS requestedDate) AS requested
+
+    LEFT JOIN day_data AS d
+        ON d.date = requested.requestedDate
+
+    LEFT JOIN day_expense AS e
+        ON d.dayId = e.dayId
+
+    GROUP BY d.id
+
+    LIMIT 1
+""")
+    fun getDaySummaryByDate(dayDate: String): Flow<DaySummary>
+
+
     // --------------------------------------------------
     // DELETE OPERATIONS
     // --------------------------------------------------

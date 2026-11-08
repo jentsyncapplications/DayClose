@@ -237,7 +237,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jmapps.dayclose.R
+import com.jmapps.dayclose.model.DayDataEntity
 import com.jmapps.dayclose.utils.standardDateFormat
+import com.jmapps.dayclose.viewmodel.DayDataViewModel
+import org.koin.androidx.compose.koinViewModel
+import kotlin.Float
+import kotlin.String
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -245,6 +250,8 @@ fun DayOpenPopup(
     onDismiss: () -> Unit
 ) {
     val today = standardDateFormat(System.currentTimeMillis())
+         val dayDataViewModel: DayDataViewModel = koinViewModel()
+
 
     val seaweed = colorResource(id = R.color.seaweed)
     val yaleBlue = colorResource(id = R.color.yale_blue)
@@ -402,6 +409,13 @@ fun DayOpenPopup(
                             if (opening == null || !opening.isFinite() || opening <= 0) {
                                 openingCashError = true
                             } else {
+                                dayDataViewModel.openDay(
+                                    DayDataEntity(
+                                   openingCash = openingCash.toFloat(),
+                                     dayId= generateTimestampBasedItemNo()
+                                    )
+                                )
+
                                 Toast.makeText(
                                     context,
                                     "Day Opened successfully",
@@ -430,4 +444,19 @@ fun DayOpenPopup(
             }
         }
     }
+}
+
+
+fun generateTimestampBasedItemNo(): String {
+    val characters = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+    val timestampPart = (System.currentTimeMillis() / 1000)
+        .toString()
+        .takeLast(2)
+
+    val randomPart = (1..6)
+        .map { characters.random() }
+        .joinToString("")
+
+    return timestampPart + randomPart
 }
