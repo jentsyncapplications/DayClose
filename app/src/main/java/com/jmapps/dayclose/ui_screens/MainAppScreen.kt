@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.jmapps.dayclose.navigationgraph.Screen
+import com.jmapps.dayclose.ui_screens.components.DayOpenPopup
 import com.jmapps.dayclose.utils.getGreeting
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
@@ -44,9 +45,8 @@ import compose.icons.fontawesomeicons.solid.MoneyBillWaveAlt
 
 @Composable
 fun MainAppScreen(navController: NavController) {
-    val scrollState = rememberScrollState()
 
-
+    var showOpeningDialog by remember { mutableStateOf(false) }
 
         Column(
             modifier = Modifier
@@ -120,13 +120,18 @@ fun MainAppScreen(navController: NavController) {
         )
 
         ActionGrid(
-            onAddOpenCash = {},
+            onAddOpenCash = { showOpeningDialog = true },
             onAddExpense = {},
             onCloseDay = {},
             onViewAllExpense = { navController.navigate("dailyExpense/29-01-2026") }
         )
     }
 }
+
+
+    if (showOpeningDialog) {
+        DayOpenPopup (onDismiss = { showOpeningDialog = false })
+    }
 
 }
 
