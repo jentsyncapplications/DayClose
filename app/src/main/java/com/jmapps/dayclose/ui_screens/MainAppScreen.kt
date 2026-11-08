@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.jmapps.dayclose.navigationgraph.Screen
+import com.jmapps.dayclose.ui_screens.components.AddExpensePopup
+import com.jmapps.dayclose.ui_screens.components.DayClosePopup
 import com.jmapps.dayclose.ui_screens.components.DayOpenPopup
 import com.jmapps.dayclose.utils.getGreeting
 import compose.icons.FontAwesomeIcons
@@ -47,6 +49,8 @@ import compose.icons.fontawesomeicons.solid.MoneyBillWaveAlt
 fun MainAppScreen(navController: NavController) {
 
     var showOpeningDialog by remember { mutableStateOf(false) }
+    var showClosingDialog by remember { mutableStateOf(false) }
+    var showAddExpenseDialog by remember { mutableStateOf(false) }
 
         Column(
             modifier = Modifier
@@ -121,8 +125,8 @@ fun MainAppScreen(navController: NavController) {
 
         ActionGrid(
             onAddOpenCash = { showOpeningDialog = true },
-            onAddExpense = {},
-            onCloseDay = {},
+            onAddExpense = { showAddExpenseDialog = true },
+            onCloseDay = { showClosingDialog= true },
             onViewAllExpense = { navController.navigate("dailyExpense/29-01-2026") }
         )
     }
@@ -132,6 +136,17 @@ fun MainAppScreen(navController: NavController) {
     if (showOpeningDialog) {
         DayOpenPopup (onDismiss = { showOpeningDialog = false })
     }
+
+
+    if (showClosingDialog) {
+        DayClosePopup (onDismiss = { showClosingDialog = false })
+    }
+
+
+    if (showAddExpenseDialog) {
+        AddExpensePopup (onDismiss = { showAddExpenseDialog = false })
+    }
+
 
 }
 

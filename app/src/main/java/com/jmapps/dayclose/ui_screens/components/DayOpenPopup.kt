@@ -377,7 +377,9 @@ fun DayOpenPopup(
                             .weight(1f)
                             .height(52.dp),
                         shape = RoundedCornerShape(14.dp),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                        border = ButtonDefaults.outlinedButtonBorder(
+                            enabled = true
+                        ).copy(
                             brush = Brush.linearGradient(
                                 listOf(Color.White, Color.White)
                             )
