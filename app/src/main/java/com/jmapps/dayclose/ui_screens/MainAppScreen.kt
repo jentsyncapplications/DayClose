@@ -37,6 +37,8 @@ import com.jmapps.dayclose.navigationgraph.Screen
 import com.jmapps.dayclose.ui_screens.components.AddExpensePopup
 import com.jmapps.dayclose.ui_screens.components.DayClosePopup
 import com.jmapps.dayclose.ui_screens.components.DayOpenPopup
+import com.jmapps.dayclose.ui_screens.components.EditDayClosePopup
+import com.jmapps.dayclose.ui_screens.components.EditDayOpenPopup
 import com.jmapps.dayclose.utils.getGreeting
 import com.jmapps.dayclose.utils.standardDateFormat
 import com.jmapps.dayclose.viewmodel.DayDataViewModel
@@ -223,13 +225,38 @@ fun MainAppScreen(navController: NavController) {
 
 
     if (showClosingDialog) {
-        DayClosePopup (onDismiss = { showClosingDialog = false })
+        DayClosePopup (
+            onDismiss = { showClosingDialog = false },
+            dayId = todaySummary.dayId
+        )
     }
 
 
     if (showAddExpenseDialog) {
-        AddExpensePopup (onDismiss = { showAddExpenseDialog = false })
+        AddExpensePopup (
+            onDismiss = { showAddExpenseDialog = false },
+            dayId= todaySummary.dayId
+        )
     }
+
+
+    if (showEditOpeningDialog) {
+
+        EditDayOpenPopup (
+            onDismiss = { showEditOpeningDialog = false },
+            openingCash = todaySummary.openingCash,
+            dayId= todaySummary.dayId
+        )
+    }
+
+    if (showEditClosingDialog) {
+        EditDayClosePopup(
+            onDismiss = { showEditClosingDialog = false },
+            closingCash = todaySummary.closingCash ?: 0f,
+            dayId = todaySummary.dayId
+        )
+    }
+
 
 
 }
@@ -401,7 +428,7 @@ fun ActionGrid(
             )
 
             ModernActionButton(
-                "History",
+                "View Expenses",
                 FontAwesomeIcons.Solid.FileInvoiceDollar,
                 colorResource(id = R.color.oxford_navy),
                 onViewAllExpense,

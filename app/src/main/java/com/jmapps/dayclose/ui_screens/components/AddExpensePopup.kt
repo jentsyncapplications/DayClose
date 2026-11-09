@@ -24,15 +24,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.room.PrimaryKey
 import com.jmapps.dayclose.R
+import com.jmapps.dayclose.model.DayExpenseEntity
 import com.jmapps.dayclose.utils.standardDateFormat
+import com.jmapps.dayclose.viewmodel.DayExpenseViewModel
+import org.koin.androidx.compose.koinViewModel
+import kotlin.String
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddExpensePopup(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    dayId: String
 ) {
     val today = standardDateFormat(System.currentTimeMillis())
+
+
+    val dayExpenseViewModel: DayExpenseViewModel = koinViewModel()
 
     val seaweed = colorResource(id = R.color.seaweed)
     val yaleBlue = colorResource(id = R.color.golden_orange)
@@ -281,7 +290,7 @@ fun AddExpensePopup(
                         },
                         modifier = Modifier.fillMaxWidth(),
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal
+                            keyboardType = KeyboardType.Text
                         ),
 //                        singleLine = true,
                         maxLines = 4,
@@ -353,6 +362,17 @@ fun AddExpensePopup(
 
                             if (valid) {
 
+                                dayExpenseViewModel.addExpense(
+                                    DayExpenseEntity(
+                                    dayId = dayId,
+                                  totalExpense = totalExpense.toFloat(),
+                                   expenseCategory =expenseCategory,
+                                  expenseDescription = expenseDescription,
+                                     expenseId = generateTimestampBasedExpenseNo()
+                                    )
+                                )
+
+
                                 Toast.makeText(
                                     context,
                                     "Expense Added successfully",
@@ -386,6 +406,25 @@ fun AddExpensePopup(
                     }
                 }
             }
+
+
+
         }
     }
+}
+
+
+
+fun generateTimestampBasedExpenseNo(): String {
+    val characters = "0123456789abcdefghijklmnopqrstuvwxyz"
+
+    val timestampPart = (System.currentTimeMillis() / 1000)
+        .toString()
+        .takeLast(3)
+
+    val randomPart = (1..5)
+        .map { characters.random() }
+        .joinToString("")
+
+    return "exp-$timestampPart$randomPart"
 }

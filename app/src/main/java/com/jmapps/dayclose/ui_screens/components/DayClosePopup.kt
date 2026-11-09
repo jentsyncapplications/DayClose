@@ -26,11 +26,14 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jmapps.dayclose.R
 import com.jmapps.dayclose.utils.standardDateFormat
+import com.jmapps.dayclose.viewmodel.DayDataViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DayClosePopup(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    dayId: String
 ) {
     val today = standardDateFormat(System.currentTimeMillis())
 
@@ -41,6 +44,8 @@ fun DayClosePopup(
 
     var closingCash by remember { mutableStateOf("") }
     var closingCashError by remember { mutableStateOf(false) }
+
+    val dayDataViewModel: DayDataViewModel = koinViewModel()
 
     val interactionSource = remember { MutableInteractionSource() }
 
@@ -190,6 +195,12 @@ fun DayClosePopup(
                             if ( closing == null || !closing.isFinite() || closing <= 0) {
                                 closingCashError = true
                             } else {
+
+                                dayDataViewModel.closeDay(
+                                 dayId = dayId,
+                                    closingCash = closingCash.toFloat()
+                                )
+
                                 Toast.makeText(
                                     context,
                                     "Day Closed successfully!",
@@ -210,7 +221,7 @@ fun DayClosePopup(
                         )
                     ) {
                         Text(
-                            text = "Open Day",
+                            text = "Close Day",
                             fontWeight = FontWeight.Bold
                         )
                     }

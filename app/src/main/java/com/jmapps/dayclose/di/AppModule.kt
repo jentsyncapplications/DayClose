@@ -8,6 +8,7 @@ import com.jmapps.dayclose.data.local_data.AppDataBase
 import com.jmapps.dayclose.repository.DayDataRepository
 import com.jmapps.dayclose.repository.DayExpenseRepository
 import com.jmapps.dayclose.viewmodel.DayDataViewModel
+import com.jmapps.dayclose.viewmodel.DayExpenseViewModel
 import org.koin.dsl.module
 import org.koin.androidx.viewmodel.dsl.viewModel
 
@@ -23,7 +24,7 @@ val appModule = module {
 
     single{ AppDataBase.getDatabase(get()).dayExpenseDao() }
     single { DayExpenseRepository(get()) }
-    viewModel{ DayDataViewModel(get())}
+    viewModel{ DayExpenseViewModel(get()) }
 
 
 }
