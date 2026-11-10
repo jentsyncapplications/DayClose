@@ -178,13 +178,14 @@ fun DailyExpenseScreen(
             verticalArrangement = Arrangement.Top
         ) {
 
+            Spacer(modifier = Modifier.height(6.dp))
             // Daily expense date header
             ExpenseHeader(date = dateId)
 
             Spacer(modifier = Modifier.height(14.dp))
 
             // Category tabs
-            ScrollableTabRow(
+            SecondaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,
                 edgePadding = 0.dp,
                 containerColor = Color.Transparent,
@@ -401,7 +402,7 @@ fun ExpenseItemCard(
                     Spacer(modifier = Modifier.height(5.dp))
 
                     Text(
-                        text = "KES ${"%,.2f".format(expense.totalExpense)}",
+                        text = "${"%,.2f".format(expense.totalExpense)}",
                         fontSize = 21.sp,
                         fontWeight = FontWeight.Bold,
                         color = primaryColor

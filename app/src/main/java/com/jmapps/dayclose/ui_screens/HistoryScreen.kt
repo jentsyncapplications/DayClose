@@ -118,9 +118,6 @@ fun HistoryScreen(navController: NavController) {
 
 
 
-    /////////////////////////
-
-
     var searchQuery by remember { mutableStateOf("") }
     var currentPage by remember { mutableIntStateOf(0) }
 
@@ -242,7 +239,7 @@ fun HistoryScreen(navController: NavController) {
             }
 
 
-
+            Spacer(modifier = Modifier.height(8.dp))
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -958,7 +955,7 @@ fun DayCloseCard(
     }
 
     fun formatCash(amount: Float): String {
-        return "KES ${currencyFormat.format(amount)}"
+        return "${currencyFormat.format(amount)}"
     }
 
     Card(
