@@ -9,6 +9,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -90,16 +91,29 @@ fun SettingScreen(
             // PREFERENCES
             SettingsSection(title = "PREFERENCES", titleColor = navy) {
 
-                SettingsToggleItem(
-                    icon = Icons.Outlined.Notifications,
-                    title = "Notifications",
-                    subtitle = "Receive daily reminders and updates",
-                    iconColor = seaweed,
-                    checked = notificationsEnabled,
-                    onCheckedChange = { enabled ->
-                        notificationsEnabled = enabled
+//                SettingsToggleItem(
+//                    icon = Icons.Outlined.Notifications,
+//                    title = "Notifications",
+//                    subtitle = "Receive daily reminders and updates",
+//                    iconColor = seaweed,
+//                    checked = notificationsEnabled,
+//                    onCheckedChange = { enabled ->
+//                        notificationsEnabled = enabled
+//                    }
+//                )
+
+                SettingsItem(
+                    icon = Icons.Outlined.Business,
+                    title = "Manage Business",
+                    subtitle = "Set up your business name",
+                    iconColor = yaleBlue,
+                    onClick = {
+//                        navController.navigate("manage_business")
+
                     }
                 )
+
+
             }
 
             // SUPPORT & LEGAL
@@ -142,7 +156,7 @@ fun SettingScreen(
                 SettingsDivider(color = border)
 
                 SettingsItem(
-                    icon = Icons.Outlined.HelpOutline,
+                    icon = Icons.AutoMirrored.Outlined.HelpOutline,
                     title = "Help & Support",
                     subtitle = "Get assistance using DayClose",
                     iconColor = yaleBlue,
@@ -155,15 +169,15 @@ fun SettingScreen(
             // ABOUT
             SettingsSection(title = "ABOUT", titleColor = navy) {
 
-                SettingsItem(
-                    icon = Icons.Outlined.AutoAwesome,
-                    title = "App Onboarding",
-                    subtitle = "Explore features and learn how to get started",
-                    iconColor = goldenOrange,
-                    onClick = {
-
-                    }
-                )
+//                SettingsItem(
+//                    icon = Icons.Outlined.AutoAwesome,
+//                    title = "App Onboarding",
+//                    subtitle = "Explore features and learn how to get started",
+//                    iconColor = goldenOrange,
+//                    onClick = {
+//
+//                    }
+//                )
 
                 SettingsDivider(color = border)
 
