@@ -1,216 +1,107 @@
 //
 //@Composable
-//fun HistoryScreen(
-//    navController: NavController
-//) {
-//    val viewModel: DayCloseViewModel = koinViewModel()
+//fun HistoryProfitSection() {
 //
-//    // Observe all business-day summaries
+//    val viewModel: DayDataViewModel = koinViewModel()
+//
+//    // Real data from Room through ViewModel
 //    val summaries by viewModel
 //        .getAllDaySummaries()
 //        .collectAsState(initial = emptyList())
 //
-//    var searchQuery by remember { mutableStateOf("") }
-//    var currentPage by remember { mutableIntStateOf(0) }
-//
-//    val itemsPerPage = 4
-//
-//    // Search and sort records by newest first
-//    val filteredItems = remember(summaries, searchQuery) {
-//        summaries
-//            .sortedByDescending { it.timestamp }
-//            .filter {
-//                it.date.contains(searchQuery.trim(), ignoreCase = true)
-//            }
+//    // Date and range states
+//    var selectedDate by remember {
+//        mutableStateOf(LocalDate.now())
 //    }
 //
-//    // Calculate pagination
-//    val totalPages = if (filteredItems.isEmpty()) {
-//        0
-//    } else {
-//        (filteredItems.size + itemsPerPage - 1) / itemsPerPage
+//    val pagerState = rememberPagerState(
+//        pageCount = { TimeRange.entries.size }
+//    )
+//
+//    val coroutineScope = rememberCoroutineScope()
+//
+//    val activeRange = TimeRange.entries[pagerState.currentPage]
+//
+//    // Earliest recorded business day acts as the weekly anchor
+//    val firstUseDate = remember(summaries) {
+//        summaries.mapNotNull {
+//            parseSummaryDate(it.date)
+//        }.minOrNull() ?: LocalDate.now()
 //    }
 //
-//    // Reset page when the search query changes
-//    LaunchedEffect(searchQuery) {
-//        currentPage = 0
+//    // Calculate the period being viewed
+//    val period = remember(
+//        activeRange,
+//        selectedDate,
+//        firstUseDate
+//    ) {
+//        getChartPeriod(
+//            range = activeRange,
+//            selectedDate = selectedDate,
+//            firstUseDate = firstUseDate
+//        )
 //    }
 //
-//    // Keep page within valid bounds after database updates
-//    LaunchedEffect(totalPages) {
-//        if (totalPages == 0) {
-//            currentPage = 0
-//        } else if (currentPage >= totalPages) {
-//            currentPage = totalPages - 1
-//        }
-//    }
-//
-//    // Get records for the current page
-//    val pagedItems = remember(filteredItems, currentPage) {
-//        filteredItems.drop(currentPage * itemsPerPage)
-//            .take(itemsPerPage)
+//    // Extract actual closed-day profits
+//    val chartPoints = remember(summaries, period) {
+//        getProfitPoints(
+//            summaries = summaries,
+//            period = period
+//        )
 //    }
 //
 //    Column(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(horizontal = 12.dp)
+//        modifier = Modifier.fillMaxWidth()
 //    ) {
 //
-//        // Search field
-//        OutlinedTextField(
-//            value = searchQuery,
-//            onValueChange = { searchQuery = it },
-//            placeholder = {
-//                Text(
-//                    "Search by date... yyyy-mm-dd",
-//                    fontSize = 13.sp
-//                )
-//            },
-//            leadingIcon = {
-//                Icon(
-//                    imageVector = FontAwesomeIcons.Solid.Search,
-//                    contentDescription = "Search",
-//                    tint = colorResource(R.color.oxford_navy),
-//                    modifier = Modifier.size(19.dp)
-//                )
-//            },
-//            trailingIcon = {
-//                if (searchQuery.isNotEmpty()) {
-//                    IconButton(
-//                        onClick = { searchQuery = "" }
-//                    ) {
-//                        Icon(
-//                            Icons.Default.Close,
-//                            contentDescription = "Clear search",
-//                            modifier = Modifier.size(18.dp)
-//                        )
-//                    }
+//        // Weekly, Monthly and Yearly selector
+//        TimeRangeToggle(
+//            selectedIndex = pagerState.currentPage,
+//            onSelected = { index ->
+//                coroutineScope.launch {
+//                    pagerState.animateScrollToPage(index)
 //                }
-//            },
-//            modifier = Modifier
-//                .fillMaxWidth()
-//                .heightIn(min = 54.dp),
-//            singleLine = true,
-//            shape = RoundedCornerShape(12.dp),
-//            colors = OutlinedTextFieldDefaults.colors(
-//                focusedContainerColor = Color.White,
-//                unfocusedContainerColor = Color.White,
-//                focusedBorderColor = colorResource(R.color.seaweed),
-//                unfocusedBorderColor = colorResource(R.color.border_color),
-//                cursorColor = colorResource(R.color.seaweed)
-//            )
+//            }
 //        )
 //
-//        Spacer(modifier = Modifier.height(8.dp))
+//        // Previous and Next period navigation
+//        DateNavigator(
+//            currentDate = selectedDate,
+//            range = activeRange,
+//            firstUseDate = firstUseDate,
+//            onDateChange = { selectedDate = it }
+//        )
 //
-//        // History cards
-//        if (pagedItems.isEmpty()) {
+//        Spacer(modifier = Modifier.height(6.dp))
 //
-//            Box(
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(vertical = 40.dp),
-//                contentAlignment = Alignment.Center
+//        // Chart
+//        HorizontalPager(
+//            state = pagerState,
+//            modifier = Modifier.fillMaxWidth(),
+//            userScrollEnabled = false
+//        ) { page ->
+//
+//            val range = TimeRange.entries[page]
+//
+//            // Use the period belonging to the displayed page
+//            val pagePeriod = getChartPeriod(
+//                range = range,
+//                selectedDate = selectedDate,
+//                firstUseDate = firstUseDate
+//            )
+//
+//            val pagePoints = remember(
+//                summaries,
+//                pagePeriod
 //            ) {
-//                Column(
-//                    horizontalAlignment = Alignment.CenterHorizontally
-//                ) {
-//                    Icon(
-//                        Icons.Default.Receipt,
-//                        contentDescription = null,
-//                        modifier = Modifier.size(36.dp),
-//                        tint = colorResource(R.color.gray)
-//                    )
-//
-//                    Spacer(modifier = Modifier.height(8.dp))
-//
-//                    Text(
-//                        text = if (searchQuery.isBlank()) {
-//                            "No business records yet"
-//                        } else {
-//                            "No matching records found"
-//                        },
-//                        color = colorResource(R.color.gray),
-//                        fontSize = 14.sp
-//                    )
-//                }
+//                getProfitPoints(summaries, pagePeriod)
 //            }
 //
-//        } else {
-//
-//            pagedItems.forEach { item ->
-//
-//                DayCloseCard(
-//                    item = item,
-//                    onViewExpenses = {
-//                        // Navigate using the unique business-day ID
-//                        navController.navigate(
-//                            "daily_expense/${item.dayId}"
-//                        )
-//                    }
-//                )
-//            }
-//        }
-//
-//        Spacer(modifier = Modifier.height(8.dp))
-//
-//        // Pagination controls
-//        if (totalPages > 1) {
-//
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                verticalAlignment = Alignment.CenterVertically,
-//                horizontalArrangement = Arrangement.SpaceBetween
-//            ) {
-//
-//                OutlinedButton(
-//                    onClick = {
-//                        if (currentPage > 0) currentPage--
-//                    },
-//                    enabled = currentPage > 0,
-//                    shape = RoundedCornerShape(10.dp),
-//                    contentPadding = PaddingValues(
-//                        horizontal = 12.dp,
-//                        vertical = 6.dp
-//                    )
-//                ) {
-//                    Icon(
-//                        Icons.AutoMirrored.Filled.ArrowBack,
-//                        contentDescription = null,
-//                        modifier = Modifier.size(16.dp)
-//                    )
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Text("Previous", fontSize = 12.sp)
-//                }
-//
-//                Text(
-//                    text = "${currentPage + 1} / $totalPages",
-//                    fontSize = 13.sp,
-//                    fontWeight = FontWeight.SemiBold,
-//                    color = colorResource(R.color.oxford_navy)
-//                )
-//
-//                OutlinedButton(
-//                    onClick = {
-//                        if (currentPage < totalPages - 1) currentPage++
-//                    },
-//                    enabled = currentPage < totalPages - 1,
-//                    shape = RoundedCornerShape(10.dp),
-//                    contentPadding = PaddingValues(
-//                        horizontal = 12.dp,
-//                        vertical = 6.dp
-//                    )
-//                ) {
-//                    Text("Next", fontSize = 12.sp)
-//                    Spacer(modifier = Modifier.width(4.dp))
-//                    Icon(
-//                        Icons.AutoMirrored.Filled.ArrowForward,
-//                        contentDescription = null,
-//                        modifier = Modifier.size(16.dp)
-//                    )
-//                }
-//            }
+//            NetProfitLineChart(
+//                points = pagePoints,
+//                period = pagePeriod,
+//                range = range
+//            )
 //        }
 //    }
 //}

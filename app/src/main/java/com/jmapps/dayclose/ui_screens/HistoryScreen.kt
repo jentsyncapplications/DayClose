@@ -33,28 +33,23 @@ import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.jmapps.dayclose.R
 import com.jmapps.dayclose.model.DaySummary
+import com.jmapps.dayclose.model.parseSummaryDate
+import com.jmapps.dayclose.utils.getChartPeriod
+
 import com.jmapps.dayclose.viewmodel.DayDataViewModel
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.text.style.TextAlign
+import com.jmapps.dayclose.model.ChartData
+import com.jmapps.dayclose.utils.generateFakeDaySummaries
+import com.jmapps.dayclose.utils.getChartData
 
-// Vico Imports
-import com.patrykandpatrick.vico.compose.axis.horizontal.rememberBottomAxis
-import com.patrykandpatrick.vico.compose.axis.vertical.rememberStartAxis
-import com.patrykandpatrick.vico.compose.chart.Chart
-import com.patrykandpatrick.vico.compose.chart.line.lineChart
-import com.patrykandpatrick.vico.compose.component.lineComponent
-import com.patrykandpatrick.vico.compose.component.shape.dashedShape
-import com.patrykandpatrick.vico.compose.component.shapeComponent
-import com.patrykandpatrick.vico.compose.component.textComponent
-import com.patrykandpatrick.vico.core.chart.DefaultPointConnector
-import com.patrykandpatrick.vico.core.chart.line.LineChart
-import com.patrykandpatrick.vico.core.component.marker.MarkerComponent
-import com.patrykandpatrick.vico.core.component.shape.Shapes
-import com.patrykandpatrick.vico.core.component.text.VerticalPosition
-import com.patrykandpatrick.vico.core.component.text.textComponent
-import com.patrykandpatrick.vico.core.dimensions.MutableDimensions
-import com.patrykandpatrick.vico.core.entry.ChartEntryModelProducer
-import com.patrykandpatrick.vico.core.entry.entryOf
-import com.patrykandpatrick.vico.core.formatter.DecimalFormatValueFormatter
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
 import compose.icons.fontawesomeicons.solid.MoneyBillAlt
@@ -64,45 +59,67 @@ import org.koin.androidx.compose.koinViewModel
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
-import kotlin.compareTo
-import kotlin.dec
-import kotlin.inc
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(navController: NavController) {
     // 1. State for the Date and Range
-    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
-    val pagerState = rememberPagerState(pageCount = { TimeRange.entries.size })
-    val coroutineScope = rememberCoroutineScope()
-    val activeRange = TimeRange.entries[pagerState.currentPage]
+    ///////////////
 
-
-    val mockDayCloses = remember {
-        generateMockDayCloses()
-    }
-
-
-//Pagination logic (IMPORTANT PART)
-//    val itemsPerPage = 4
-//    var currentPage by remember { mutableStateOf(0) }
-
-//    val totalPages = (mockDayCloses.size + itemsPerPage - 1) / itemsPerPage
-
-//    val pagedItems = mockDayCloses.drop(currentPage * itemsPerPage)
-//        .take(itemsPerPage)
-
-//    var searchQuery by remember { mutableStateOf("") }
 
     val dayDataViewModel: DayDataViewModel = koinViewModel()
-
-    ///////////////////
 
     // Observe all business-day summaries
     val summaries by dayDataViewModel
         .getAllDaySummaries()
         .collectAsState(initial = emptyList())
+
+//    // Temporary fake data for chart testing
+//    val summaries = remember {
+//        generateFakeDaySummaries(
+//            endDate = LocalDate.now(),
+//            years = 4
+//        )
+//    }
+
+    // Date and range states
+    var selectedDate by remember {
+        mutableStateOf(LocalDate.now())
+    }
+
+    val pagerState = rememberPagerState(
+        pageCount = { TimeRange.entries.size }
+    )
+
+    val coroutineScope = rememberCoroutineScope()
+
+    val activeRange = TimeRange.entries[pagerState.currentPage]
+
+    // Earliest recorded business day acts as the weekly anchor
+    val firstUseDate = remember(summaries) {
+        summaries.mapNotNull {
+            parseSummaryDate(it.date)
+        }.minOrNull() ?: LocalDate.now()
+    }
+
+    // Calculate the period being viewed
+    val period = remember(
+        activeRange,
+        selectedDate,
+        firstUseDate
+    ) {
+        getChartPeriod(
+            range = activeRange,
+            selectedDate = selectedDate,
+            firstUseDate = firstUseDate
+        )
+    }
+
+
+
+    /////////////////////////
+
 
     var searchQuery by remember { mutableStateOf("") }
     var currentPage by remember { mutableIntStateOf(0) }
@@ -169,113 +186,61 @@ fun HistoryScreen(navController: NavController) {
         ) {
         HistIntroHeader()
 
-        // 2. Range Selector (Weekly, Monthly, Yearly)
-        TimeRangeToggle(
-            selectedIndex = pagerState.currentPage,
-            onSelected = { index ->
-                coroutineScope.launch { pagerState.animateScrollToPage(index) }
-            }
-        )
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
 
-        // 3. NEW: Date Navigator (Previous/Next)
-        DateNavigator(
-            currentDate = selectedDate,
-            range = activeRange,
-            onDateChange = { newDate -> selectedDate = newDate }
-        )
+                TimeRangeToggle(
+                    selectedIndex = pagerState.currentPage,
+                    onSelected = { index ->
+                        coroutineScope.launch {
+                            pagerState.animateScrollToPage(index)
+                        }
+                    }
+                )
 
-        Spacer(modifier = Modifier.height(6.dp))
+                DateNavigator(
+                    currentDate = selectedDate,
+                    range = activeRange,
+                    firstUseDate = firstUseDate,
+                    onDateChange = {
+                        selectedDate = it
+                    }
+                )
 
-        // 4. Pager (Displays the chart for the selected period)
-        HorizontalPager(
-            state = pagerState,
-            modifier = Modifier.fillMaxWidth(),
-            userScrollEnabled = false // Disabled to prevent confusion with button nav
-        ) { page ->
-            // In a real app, you'd fetch data here: getProfitData(activeRange, selectedDate)
-            val mockData = remember(selectedDate, activeRange) {
-                List(if (activeRange == TimeRange.WEEKLY) 7 else 4) {
-                    (-5000..20000).random().toFloat()
+                Spacer(modifier = Modifier.height(6.dp))
+
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxWidth(),
+                    userScrollEnabled = false
+                ) { page ->
+
+                    val range = TimeRange.entries[page]
+
+                    // Calculate data specifically for this page.
+                    val pageChartData = remember(
+                        summaries,
+                        range,
+                        selectedDate,
+                        firstUseDate
+                    ) {
+                        getChartData(
+                            summaries = summaries,
+                            range = range,
+                            selectedDate = selectedDate,
+                            firstUseDate = firstUseDate
+                        )
+                    }
+
+                    NetProfitLineChart(
+                        chartData = pageChartData,
+                        range = range,
+                        selectedDate = selectedDate
+                    )
                 }
             }
 
-            val mockLabels = when (activeRange) {
-                TimeRange.WEEKLY -> listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-                TimeRange.MONTHLY -> listOf("Wk 1", "Wk 2", "Wk 3", "Wk 4")
-                TimeRange.YEARLY -> listOf("Q1", "Q2", "Q3", "Q4")
-            }
-
-            NetProfitLineChart(data = mockData, labels = mockLabels)
-        }
-
-
-//        Column(modifier = Modifier.fillMaxWidth()) {
-//
-//
-//            // Search Field by date
-//            TextField(
-//                value = searchQuery,
-//                onValueChange = { searchQuery = it },
-//                placeholder = { Text(text = "Search by date... yyyy-mm-dd") },
-//                leadingIcon = {
-//
-//                    Icon(
-//                        imageVector = FontAwesomeIcons.Solid.Search,
-//                        contentDescription = "Search Icon",
-//                        tint = colorResource(id = R.color.oxford_navy),
-//                        modifier = Modifier.size(24.dp)
-//                    )
-//                },
-//                modifier = Modifier
-//                    .fillMaxWidth()
-//                    .padding(4.dp)
-//                    .clip(RoundedCornerShape(12.dp))
-//                    .background(Color.White),
-//                colors = TextFieldDefaults.colors(
-//                    focusedContainerColor = Color.Transparent,
-//                    unfocusedContainerColor = Color.Transparent,
-//                    disabledContainerColor = Color.Transparent,
-//                    cursorColor = Color.Black,
-//                    focusedIndicatorColor = Color.Transparent,
-//                    unfocusedIndicatorColor = Color.Transparent
-//                ),
-//                singleLine = true
-//            )
-//
-//            Spacer(modifier = Modifier.height(8.dp))
-//
-//            // 📄 PAGED ITEMS (ONLY 4)
-//            pagedItems.forEach { item ->
-//                DayCloseCard(item)
-//            }
-//
-//            Spacer(modifier = Modifier.height(12.dp))
-//
-//            // ⏮️ ⏭️ Pagination buttons
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.SpaceBetween
-//            ) {
-//                Button(
-//                    onClick = { if (currentPage > 0) currentPage-- },
-//                    enabled = currentPage > 0
-//                ) {
-//                    Text("Previous")
-//                }
-//
-//                Text(
-//                    text = "Page ${currentPage + 1} of $totalPages",
-//                    modifier = Modifier.align(Alignment.CenterVertically)
-//                )
-//
-//                Button(
-//                    onClick = { if (currentPage < totalPages - 1) currentPage++ },
-//                    enabled = currentPage < totalPages - 1
-//                ) {
-//                    Text("Next")
-//                }
-//            }
-//        }
 
 
             Column(
@@ -372,9 +337,8 @@ fun HistoryScreen(navController: NavController) {
                             item = item,
                             onViewExpenses = {
                                 // Navigate using the unique business-day ID
-                                navController.navigate(
-                                    "daily_expense/${item.dayId}"
-                                )
+
+                                navController.navigate("dailyExpense/${item.date}")
                             }
                         )
                     }
@@ -450,130 +414,424 @@ fun HistoryScreen(navController: NavController) {
 
 
 
+
+@Composable
+fun NetProfitLineChart(
+    chartData: ChartData,
+    range: TimeRange,
+    selectedDate: LocalDate
+) {
+    val seaweed = colorResource(R.color.seaweed)
+    val navy = colorResource(R.color.oxford_navy)
+    val gridColor = colorResource(R.color.border_color)
+
+    val formatter = remember {
+        java.text.DecimalFormat("#,##0")
+    }
+
+    val title = when (range) {
+        TimeRange.WEEKLY -> "Weekly Net Profit"
+        TimeRange.MONTHLY -> "Monthly Net Profit"
+        TimeRange.YEARLY -> "Yearly Net Profit"
+    }
+
+    val subtitle = when (range) {
+        TimeRange.WEEKLY ->
+            selectedDate.format(
+                DateTimeFormatter.ofPattern("MMMM yyyy")
+            )
+
+        TimeRange.MONTHLY ->
+            selectedDate.format(
+                DateTimeFormatter.ofPattern("MMMM yyyy")
+            )
+
+        TimeRange.YEARLY ->
+            selectedDate.year.toString()
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(
+                Color.White,
+                RoundedCornerShape(14.dp)
+            )
+            .padding(12.dp)
+    ) {
+
+        Text(
+            text = title,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.Bold,
+            color = navy
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        Text(
+            text = subtitle,
+            fontSize = 11.sp,
+            color = Color.Gray
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        if (chartData.points.isEmpty()) {
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "No closed-day profits for this period",
+                    color = Color.Gray,
+                    fontSize = 13.sp
+                )
+            }
+
+        } else {
+
+            Canvas(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(240.dp)
+            ) {
+
+                val leftPadding = 58.dp.toPx()
+                val rightPadding = 12.dp.toPx()
+                val topPadding = 16.dp.toPx()
+                val bottomPadding = 35.dp.toPx()
+
+                val chartWidth = size.width -
+                        leftPadding - rightPadding
+
+                val chartHeight = size.height -
+                        topPadding - bottomPadding
+
+                val slotCount = chartData.slotCount
+
+                // Calculate X using fixed chart positions.
+                fun getX(slot: Int): Float {
+
+                    val position = if (slotCount > 1) {
+                        slot.toFloat() / (slotCount - 1)
+                    } else {
+                        0.5f
+                    }
+
+                    return leftPadding +
+                            position * chartWidth
+                }
+
+                // Include zero in the Y-axis.
+                val minimum = minOf(
+                    chartData.points.minOf { it.value },
+                    0f
+                )
+
+                val maximum = maxOf(
+                    chartData.points.maxOf { it.value },
+                    0f
+                )
+
+                val difference = (maximum - minimum)
+                    .takeIf { it > 0f } ?: 1f
+
+                val padding = difference * 0.15f
+
+                val minY = minimum - padding
+                val maxY = maximum + padding
+
+                fun getY(value: Float): Float {
+
+                    return topPadding +
+                            ((maxY - value) / (maxY - minY)) *
+                            chartHeight
+                }
+
+                val textPaint = android.graphics.Paint(
+                    android.graphics.Paint.ANTI_ALIAS_FLAG
+                ).apply {
+                    color = android.graphics.Color.rgb(
+                        5, 47, 95
+                    )
+                    textSize = 10.sp.toPx()
+                    textAlign = android.graphics.Paint.Align.RIGHT
+                }
+
+                val datePaint = android.graphics.Paint(
+                    android.graphics.Paint.ANTI_ALIAS_FLAG
+                ).apply {
+                    color = android.graphics.Color.GRAY
+                    textSize = 9.sp.toPx()
+                    textAlign = android.graphics.Paint.Align.CENTER
+                }
+
+                // Horizontal grid lines.
+                for (i in 0..4) {
+
+                    val value = maxY -
+                            ((maxY - minY) * i / 4f)
+
+                    val y = getY(value)
+
+                    drawLine(
+                        color = gridColor,
+                        start = Offset(leftPadding, y),
+                        end = Offset(
+                            leftPadding + chartWidth,
+                            y
+                        ),
+                        strokeWidth = 0.8.dp.toPx()
+                    )
+
+                    drawContext.canvas.nativeCanvas.drawText(
+                        formatter.format(value),
+                        leftPadding - 8.dp.toPx(),
+                        y + 4.dp.toPx(),
+                        textPaint
+                    )
+                }
+
+                // Zero-profit reference line.
+                if (minY < 0f && maxY > 0f) {
+
+                    val zeroY = getY(0f)
+
+                    drawLine(
+                        color = navy.copy(alpha = 0.4f),
+                        start = Offset(leftPadding, zeroY),
+                        end = Offset(
+                            leftPadding + chartWidth,
+                            zeroY
+                        ),
+                        strokeWidth = 1.2.dp.toPx()
+                    )
+                }
+
+                // X-axis labels.
+                // Avoid overcrowding in monthly charts.
+                val labelSlots = when (range) {
+
+                    TimeRange.WEEKLY ->
+                        chartData.axisLabels.indices.toList()
+
+                    TimeRange.MONTHLY ->
+                        chartData.axisLabels.indices.filter {
+                            it % 5 == 0 ||
+                                    it == slotCount - 1
+                        }
+
+                    TimeRange.YEARLY ->
+                        chartData.axisLabels.indices.toList()
+                }
+
+                labelSlots.forEach { slot ->
+
+                    val x = getX(slot)
+
+                    drawContext.canvas.nativeCanvas.drawText(
+                        chartData.axisLabels[slot],
+                        x,
+                        size.height - 5.dp.toPx(),
+                        datePaint
+                    )
+                }
+
+                // Sort points by their fixed positions.
+                val sortedPoints = chartData.points
+                    .sortedBy { it.slot }
+
+                // Draw connecting line.
+                val path = Path()
+
+                sortedPoints.forEachIndexed { index, point ->
+
+                    val position = Offset(
+                        getX(point.slot),
+                        getY(point.value)
+                    )
+
+                    if (index == 0) {
+                        path.moveTo(position.x, position.y)
+                    } else {
+                        path.lineTo(position.x, position.y)
+                    }
+                }
+
+                drawPath(
+                    path = path,
+                    color = seaweed,
+                    style = Stroke(
+                        width = 1.8.dp.toPx(),
+                        cap = StrokeCap.Round
+                    )
+                )
+
+                // Draw a circle at every available data point.
+                sortedPoints.forEach { point ->
+
+                    val center = Offset(
+                        getX(point.slot),
+                        getY(point.value)
+                    )
+
+                    drawCircle(
+                        color = Color.White,
+                        radius = 5.dp.toPx(),
+                        center = center
+                    )
+
+                    drawCircle(
+                        color = if (point.value < 0f) {
+                            Color(0xFFD32F2F)
+                        } else {
+                            seaweed
+                        },
+                        radius = 5.dp.toPx(),
+                        center = center,
+                        style = Stroke(
+                            width = 2.dp.toPx()
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+
+
+
 @Composable
 fun DateNavigator(
     currentDate: LocalDate,
     range: TimeRange,
+    firstUseDate: LocalDate,
     onDateChange: (LocalDate) -> Unit
 ) {
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM")
+    val period = getChartPeriod(
+        range = range,
+        selectedDate = currentDate,
+        firstUseDate = firstUseDate
+    )
+
+    val today = LocalDate.now()
+
+    // Do not navigate before the user's first recorded day
+    val canGoPrevious = period.startDate > firstUseDate
+
+    // Do not navigate into future periods
+    val canGoNext = period.endDate < today
+
+    val formatter = when (range) {
+        TimeRange.WEEKLY ->
+            DateTimeFormatter.ofPattern("dd MMM")
+
+        TimeRange.MONTHLY ->
+            DateTimeFormatter.ofPattern("MMMM yyyy")
+
+        TimeRange.YEARLY ->
+            DateTimeFormatter.ofPattern("yyyy")
+    }
+
+    val displayDate = when (range) {
+        TimeRange.WEEKLY ->
+            "${period.startDate.format(formatter)} - " +
+                    period.endDate.format(
+                        DateTimeFormatter.ofPattern("dd MMM yyyy")
+                    )
+
+        TimeRange.MONTHLY ->
+            period.startDate.format(formatter)
+
+        TimeRange.YEARLY ->
+            period.startDate.format(formatter)
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = {
-            onDateChange(when(range) {
-                TimeRange.WEEKLY -> currentDate.minusWeeks(1)
-                TimeRange.MONTHLY -> currentDate.minusMonths(1)
-                TimeRange.YEARLY -> currentDate.minusYears(1)
-            })
-        }) {
-            Text("<", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+
+        IconButton(
+            enabled = canGoPrevious,
+            onClick = {
+                onDateChange(
+                    when (range) {
+                        TimeRange.WEEKLY -> currentDate.minusWeeks(1)
+                        TimeRange.MONTHLY -> currentDate.minusMonths(1)
+                        TimeRange.YEARLY -> currentDate.minusYears(1)
+                    }
+                )
+            }
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "Previous period",
+                tint = if (canGoPrevious) {
+                    colorResource(R.color.oxford_navy)
+                } else {
+                    Color.LightGray
+                }
+            )
         }
 
-        // Current Date Display
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                text = currentDate.format(formatter),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Medium,
-                color = colorResource(id = R.color.oxford_navy)
+                text = displayDate,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+                color = colorResource(R.color.oxford_navy)
             )
+
             Text(
-                text = if (range == TimeRange.WEEKLY) "Week View" else if (range == TimeRange.MONTHLY) "Month View" else "Year View",
-                fontSize = 12.sp,
+                text = when (range) {
+                    TimeRange.WEEKLY -> "7-day business cycle"
+                    TimeRange.MONTHLY -> "Monthly performance"
+                    TimeRange.YEARLY -> "Yearly performance"
+                },
+                fontSize = 11.sp,
                 color = Color.Gray
             )
         }
 
-        IconButton(onClick = {
-            onDateChange(when(range) {
-                TimeRange.WEEKLY -> currentDate.plusWeeks(1)
-                TimeRange.MONTHLY -> currentDate.plusMonths(1)
-                TimeRange.YEARLY -> currentDate.plusYears(1)
-            })
-        }) {
-            Text(">", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        IconButton(
+            enabled = canGoNext,
+            onClick = {
+                onDateChange(
+                    when (range) {
+                        TimeRange.WEEKLY -> currentDate.plusWeeks(1)
+                        TimeRange.MONTHLY -> currentDate.plusMonths(1)
+                        TimeRange.YEARLY -> currentDate.plusYears(1)
+                    }
+                )
+            }
+        ) {
+            Icon(
+                Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "Next period",
+                tint = if (canGoNext) {
+                    colorResource(R.color.oxford_navy)
+                } else {
+                    Color.LightGray
+                }
+            )
         }
     }
 }
 
 
 
-@Composable
-fun NetProfitLineChart(
-    data: List<Float>,
-    labels: List<String>
-) {
-    // entryOf creates a proper FloatEntry that won't crash on touch/animation
-    val modelProducer = remember(data) {
-        ChartEntryModelProducer(
-            data.mapIndexed { index, value -> entryOf(index.toFloat(), value) }
-        )
-    }
-
-    Chart(
-        chart = lineChart(
-            lines = listOf(
-                LineChart.LineSpec(
-                    lineColor = Color(0xFF2E7D32).toArgb(),
-                    lineThicknessDp = 3f,
-                    lineCap = Paint.Cap.ROUND,
-                    pointSizeDp = 8f,
-                    dataLabelVerticalPosition = VerticalPosition.Top,
-                    dataLabelValueFormatter = DecimalFormatValueFormatter(),
-                    pointConnector = DefaultPointConnector(cubicStrength = 0.2f),
-                )
-            )
-        ),
-        chartModelProducer = modelProducer,
-        startAxis = rememberStartAxis(),
-        bottomAxis = rememberBottomAxis(
-            valueFormatter = { value, _ ->
-                labels.getOrNull(value.toInt()) ?: ""
-            }
-        ),
-        marker = rememberMarker(),
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(260.dp)
-            .padding(16.dp)
-    )
-}
-
-
-@Composable
-fun rememberMarker(): MarkerComponent {
-    val label = textComponent {
-        color = Color.White.toArgb()
-        background = shapeComponent(shape = Shapes.pillShape, color = Color.Black)
-        padding = MutableDimensions(4f, 8f, 4f, 8f) // Core uses Float for dimensions
-    }
-
-    val indicator = shapeComponent(Shapes.pillShape, Color(0xFF2E7D32))
-
-    val guideline = lineComponent(
-        color = Color.LightGray,
-        thickness = 2.dp, // Fixed name and type
-        shape = Shapes.dashedShape(
-            shape = Shapes.rectShape,
-            dashLength = 8.dp,
-            gapLength = 4.dp
-        )
-    )
-
-    return remember(label, indicator, guideline) {
-        MarkerComponent(
-            label = label,
-            indicator = indicator,
-            guideline = guideline
-        )
-    }
-}
 
 @Composable
 fun TimeRangeToggle(
@@ -582,35 +840,60 @@ fun TimeRangeToggle(
 ) {
     val options = TimeRange.entries
 
-    Row(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(8.dp),
-        horizontalArrangement = Arrangement.SpaceEvenly
+            .padding(horizontal = 4.dp),
+        color = colorResource(R.color.border_color),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        options.forEachIndexed { index, option ->
-            Button(
-                onClick = { onSelected(index) },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (index == selectedIndex)
-                        MaterialTheme.colorScheme.primary
-                    else
-                        MaterialTheme.colorScheme.surface
-                ),
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(20.dp)
-            ) {
-                Text(
-                    text = option.title,
-                    color = if (index == selectedIndex)
-                        MaterialTheme.colorScheme.onPrimary
-                    else
-                        MaterialTheme.colorScheme.primary
-                )
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            options.forEachIndexed { index, option ->
+
+                val selected = index == selectedIndex
+
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable {
+                            onSelected(index)
+                        },
+                    color = if (selected) {
+                        colorResource(R.color.oxford_navy)
+                    } else {
+                        Color.Transparent
+                    },
+                    shape = RoundedCornerShape(9.dp)
+                ) {
+                    Text(
+                        text = option.title,
+                        modifier = Modifier.padding(
+                            horizontal = 6.dp,
+                            vertical = 10.dp
+                        ),
+                        textAlign = TextAlign.Center,
+                        fontSize = 13.sp,
+                        fontWeight = if (selected) {
+                            FontWeight.Bold
+                        } else {
+                            FontWeight.Medium
+                        },
+                        color = if (selected) {
+                            Color.White
+                        } else {
+                            colorResource(R.color.oxford_navy)
+                        }
+                    )
+                }
             }
         }
     }
 }
+
+
 
 @Composable
 fun HistIntroHeader() {
@@ -644,76 +927,12 @@ enum class TimeRange(val title: String) {
     MONTHLY("Monthly"),
     YEARLY("Yearly")
 }
-
 @Preview(showBackground = true)
 @Composable
 fun HistoryScreenPreview() {
     HistoryScreen(navController = rememberNavController())
 }
 
-
-//
-//// reusable card (your UI, cleaned)
-//@Composable
-//fun DayCloseCard(item: DayCloseItem) {
-//    Box(
-//        modifier = Modifier
-//            .fillMaxWidth()
-//            .padding(vertical = 6.dp)
-//            .border(1.dp, Color(0xFF2E7D32), RoundedCornerShape(16.dp))
-//            .background(Color(0xFFE8F5E9), RoundedCornerShape(16.dp))
-//            .padding(16.dp)
-//    ) {
-//        Column {
-//            Text(
-//                item.date,
-//                fontWeight = FontWeight.Bold,
-//                color = colorResource(id = R.color.oxford_navy)
-//            )
-//
-//            Row(
-//                modifier = Modifier.fillMaxWidth(),
-//                horizontalArrangement = Arrangement.spacedBy(4.dp)
-//            ) {
-//
-//
-//                SmallStatCard(
-//                    title = "Opening",
-//                    amount = "12,500",
-//                    icon = FontAwesomeIcons.Solid.MoneyBillAlt,
-//                    color = colorResource(id = R.color.seaweed),
-//                    modifier = Modifier.weight(1f)
-//                )
-//                SmallStatCard(
-//                    title = "Closing",
-//                    amount = "18,300",
-//                    icon = FontAwesomeIcons.Solid.MoneyBillWaveAlt,
-//                    color = colorResource(id = R.color.oxford_navy),
-//                    modifier = Modifier.weight(1f)
-//                )
-//            }
-//
-//            Spacer(modifier = Modifier.height(6.dp))
-//
-//            SummaryBox("Net Profit", item.netProfit)
-//            Spacer(modifier = Modifier.height(6.dp))
-//            SummaryBox("Total Expense", item.totalExpense)
-//
-//            Spacer(modifier = Modifier.height(6.dp))
-//
-//            Box(
-//                modifier = Modifier
-//                    .background(
-//                        colorResource(id = R.color.seaweed),
-//                        RoundedCornerShape(20.dp)
-//                    )
-//                    .padding(horizontal = 12.dp, vertical = 8.dp)
-//            ) {
-//                Text(item.status, color = Color.White, fontSize = 12.sp)
-//            }
-//        }
-//    }
-//}
 
 
 
@@ -982,77 +1201,6 @@ fun HistoryStat(
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-data class DayCloseItem(
-    val date: String,
-    val openingCash: String,
-    val closingCash: String,
-    val netProfit: String,
-    val totalExpense: String,
-    val status: String
-)
-
-
-
-//Helper: date range generator
-
-fun generateMockDayCloses(): List<DayCloseItem> {
-    val startDate = LocalDate.of(2025, 1, 1)
-    val endDate = LocalDate.of(2026, 2, 1)
-
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-
-    val list = mutableListOf<DayCloseItem>()
-    var date = startDate
-    var dayIndex = 0
-
-    while (!date.isAfter(endDate)) {
-        val openingCash = 20_000
-        val dailySales = (5_000..15_000).random()
-        val expenses = (2_000..8_000).random()
-        val closingCash = openingCash + dailySales - expenses
-        val netProfit = dailySales - expenses
-
-        list.add(
-            DayCloseItem(
-                date = date.format(formatter),
-                openingCash = openingCash.formatMoney(),
-                closingCash = closingCash.formatMoney(),
-                netProfit = netProfit.formatMoney(),
-                totalExpense = expenses.formatMoney(),
-                status = when {
-                    netProfit > 5_000 -> "Excellent"
-                    netProfit > 0 -> "Above average"
-                    else -> "Loss"
-                }
-            )
-        )
-
-        date = date.plusDays(1)
-        dayIndex++
-    }
-
-    return list
-}
-
-
-//Money formatter (nice UI)
-fun Int.formatMoney(): String {
-    return "%,d".format(this)
-}
 
 
 
