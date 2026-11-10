@@ -10,6 +10,12 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,12 +25,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.jmapps.dayclose.R
+import com.jmapps.dayclose.model.DaySummary
+import com.jmapps.dayclose.viewmodel.DayDataViewModel
 import kotlinx.coroutines.launch
 
 // Vico Imports
@@ -51,76 +60,16 @@ import compose.icons.fontawesomeicons.Solid
 import compose.icons.fontawesomeicons.solid.MoneyBillAlt
 import compose.icons.fontawesomeicons.solid.MoneyBillWaveAlt
 import compose.icons.fontawesomeicons.solid.Search
+import org.koin.androidx.compose.koinViewModel
 
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import kotlin.compareTo
+import kotlin.dec
+import kotlin.inc
 
 @OptIn(ExperimentalMaterial3Api::class)
-
-
-
-
-//@Composable
-//fun HistoryScreen(navController: NavController) {
-//    Column(
-//        modifier = Modifier
-//            .fillMaxSize()
-//            .background(colorResource(id = R.color.gray))
-//            .statusBarsPadding()
-//            .verticalScroll(rememberScrollState())
-//            .padding(horizontal = 12.dp, vertical = 16.dp)
-//    ) {
-//        HistIntroHeader()
-//
-//        val pagerState = rememberPagerState(
-//            initialPage = 0,
-//            pageCount = { TimeRange.entries.size }
-//        )
-//        val coroutineScope = rememberCoroutineScope()
-//
-//        Column {
-//            // Toggle Buttons
-//            TimeRangeToggle(
-//                selectedIndex = pagerState.currentPage,
-//                onSelected = { index ->
-//                    coroutineScope.launch {
-//                        pagerState.animateScrollToPage(index)
-//                    }
-//                }
-//            )
-//
-//            // Pager
-//            HorizontalPager(
-//                state = pagerState,
-//                modifier = Modifier.fillMaxWidth()
-//            ) { page ->
-//                when (TimeRange.entries[page]) {
-//                    TimeRange.WEEKLY -> {
-//                        NetProfitLineChart(
-//                            data = listOf(18000f, 12000f, -3000f, 4000f, 13000f, 8000f, 11000f),
-//                            labels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-//                        )
-//                    }
-//                    TimeRange.MONTHLY -> {
-//                        NetProfitLineChart(
-//                            data = listOf(120000f, 98000f, 140000f, -20000f),
-//                            labels = listOf("Week 1", "Week 2", "Week 3", "Week 4")
-//                        )
-//                    }
-//                    TimeRange.YEARLY -> {
-//                        NetProfitLineChart(
-//                            data = listOf(900000f, 1100000f, 850000f, 1300000f),
-//                            labels = listOf("Q1", "Q2", "Q3", "Q4")
-//                        )
-//                    }
-//                }
-//            }
-//        }
-//
-//    }
-//}
-
 @Composable
 fun HistoryScreen(navController: NavController) {
     // 1. State for the Date and Range
@@ -135,29 +84,73 @@ fun HistoryScreen(navController: NavController) {
     }
 
 
-//    val mockDayCloses = List(15) { index ->
-//        DayCloseItem(
-//            date = "2026-01-${(index + 1).toString().padStart(2, '0')}",
-//            openingCash = "20,000",
-//            closingCash = "${20_000 + index * 1_500}",
-//            netProfit = "${5_000 - index * 300}",
-//            totalExpense = "${3_000 + index * 200}",
-//            status = if (index % 2 == 0) "Above average" else "Below average"
-//        )
-//    }
-
-
-
 //Pagination logic (IMPORTANT PART)
-    val itemsPerPage = 4
-    var currentPage by remember { mutableStateOf(0) }
+//    val itemsPerPage = 4
+//    var currentPage by remember { mutableStateOf(0) }
 
-    val totalPages = (mockDayCloses.size + itemsPerPage - 1) / itemsPerPage
+//    val totalPages = (mockDayCloses.size + itemsPerPage - 1) / itemsPerPage
 
-    val pagedItems = mockDayCloses.drop(currentPage * itemsPerPage)
-        .take(itemsPerPage)
+//    val pagedItems = mockDayCloses.drop(currentPage * itemsPerPage)
+//        .take(itemsPerPage)
+
+//    var searchQuery by remember { mutableStateOf("") }
+
+    val dayDataViewModel: DayDataViewModel = koinViewModel()
+
+    ///////////////////
+
+    // Observe all business-day summaries
+    val summaries by dayDataViewModel
+        .getAllDaySummaries()
+        .collectAsState(initial = emptyList())
 
     var searchQuery by remember { mutableStateOf("") }
+    var currentPage by remember { mutableIntStateOf(0) }
+
+    val itemsPerPage = 4
+
+    // Search and sort records by newest first
+    val filteredItems = remember(summaries, searchQuery) {
+        summaries
+            .sortedByDescending { it.timestamp }
+            .filter {
+                it.date.contains(searchQuery.trim(), ignoreCase = true)
+            }
+    }
+
+    // Calculate pagination
+    val totalPages = if (filteredItems.isEmpty()) {
+        0
+    } else {
+        (filteredItems.size + itemsPerPage - 1) / itemsPerPage
+    }
+
+    // Reset page when the search query changes
+    LaunchedEffect(searchQuery) {
+        currentPage = 0
+    }
+
+    // Keep page within valid bounds after database updates
+    LaunchedEffect(totalPages) {
+        if (totalPages == 0) {
+            currentPage = 0
+        } else if (currentPage >= totalPages) {
+            currentPage = totalPages - 1
+        }
+    }
+
+    // Get records for the current page
+    val pagedItems = remember(filteredItems, currentPage) {
+        filteredItems.drop(currentPage * itemsPerPage)
+            .take(itemsPerPage)
+    }
+
+
+    ///////
+
+
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -215,8 +208,11 @@ fun HistoryScreen(navController: NavController) {
             NetProfitLineChart(data = mockData, labels = mockLabels)
         }
 
-//        Column(modifier =Modifier.fillMaxWidth()){
-//            // Search Field
+
+//        Column(modifier = Modifier.fillMaxWidth()) {
+//
+//
+//            // Search Field by date
 //            TextField(
 //                value = searchQuery,
 //                onValueChange = { searchQuery = it },
@@ -226,7 +222,7 @@ fun HistoryScreen(navController: NavController) {
 //                    Icon(
 //                        imageVector = FontAwesomeIcons.Solid.Search,
 //                        contentDescription = "Search Icon",
-//                        tint = colorResource(id=R.color.oxford_navy),
+//                        tint = colorResource(id = R.color.oxford_navy),
 //                        modifier = Modifier.size(24.dp)
 //                    )
 //                },
@@ -248,203 +244,202 @@ fun HistoryScreen(navController: NavController) {
 //
 //            Spacer(modifier = Modifier.height(8.dp))
 //
-//          repeat(5){
+//            // 📄 PAGED ITEMS (ONLY 4)
+//            pagedItems.forEach { item ->
+//                DayCloseCard(item)
+//            }
 //
-//              Box(
-//                  modifier = Modifier
-//                      .fillMaxWidth()
-//                      .padding(vertical = 6.dp)
-//                      .border(
-//                          width = 1.dp,
-//                          color = Color(0xFF2E7D32), // outline color
-//                          shape = RoundedCornerShape(16.dp)
-//                      )
-//                      .background(
-//                          color = Color(0xFFE8F5E9), // background color
-//                          shape = RoundedCornerShape(16.dp)
-//                      )
-//                      .padding(16.dp) // inner padding
-//              ) {
-//                 Column{
-//                     // content here
-//                     Text(
-//                         "31/01/2026",
-//                         fontWeight = FontWeight.Bold,
-//                         color = colorResource(id = R.color.oxford_navy)
-//                     )
-//                     Row(
-//                         modifier = Modifier
-//                             .fillMaxWidth()
-//                             .padding(6.dp),
-//                         horizontalArrangement = Arrangement.spacedBy(4.dp)
-//                     ) {
+//            Spacer(modifier = Modifier.height(12.dp))
 //
-//                         CashCard(
-//                             title = "Opening Cash",
-//                             amount = "20,000",
-//                             backgroundColor = R.color.light_background,
-//                             modifier = Modifier.weight(1f)
-//                         )
+//            // ⏮️ ⏭️ Pagination buttons
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//                Button(
+//                    onClick = { if (currentPage > 0) currentPage-- },
+//                    enabled = currentPage > 0
+//                ) {
+//                    Text("Previous")
+//                }
 //
-//                         CashCard(
-//                             title = "Closing Cash",
-//                             amount = "30,000",
-//                             backgroundColor = R.color.light_background,
-//                             modifier = Modifier.weight(1f)
-//                         )
-//                     }
-//                     Spacer(modifier = Modifier.height(6.dp))
+//                Text(
+//                    text = "Page ${currentPage + 1} of $totalPages",
+//                    modifier = Modifier.align(Alignment.CenterVertically)
+//                )
 //
-//                     Box(
-//                         modifier = Modifier
-//                             .fillMaxWidth()                    // ✅ takes full screen width
-//                             .padding(horizontal = 16.dp)       // ✅ outer spacing from screen edges
-//                             .background(
-//                                 color = colorResource(id = R.color.light_background),
-//                                 shape = RoundedCornerShape(8.dp)
-//                             )
-//                             .padding(6.dp)                    // ✅ big inner padding
-//                     ) {
-//                         Column {
-//                             Text(
-//                                 text = "Net Profit",
-//                                 color = colorResource(id = R.color.seaweed),
-//                                 fontSize = 16.sp                // slightly bigger label
-//                             )
-//
-//                             Spacer(modifier = Modifier.height(6.dp))
-//
-//                             Text(
-//                                 text = "10,000",
-//                                 color = colorResource(id = R.color.yale_blue),
-//                                 fontSize = 28.sp,               // big emphasis
-//                                 fontWeight = FontWeight.SemiBold
-//                             )
-//                         }
-//                     }
-//                     Spacer(modifier = Modifier.height(6.dp))
-//                     Box(
-//                         modifier = Modifier
-//                             .fillMaxWidth()                    // ✅ takes full screen width
-//                             .padding(horizontal = 16.dp)       // ✅ outer spacing from screen edges
-//                             .background(
-//                                 color = colorResource(id = R.color.light_background),
-//                                 shape = RoundedCornerShape(8.dp)
-//                             )
-//                             .padding(6.dp)                    // ✅ big inner padding
-//                     ) {
-//                         Column {
-//                             Text(
-//                                 text = "Total expense",
-//                                 color = colorResource(id = R.color.seaweed),
-//                                 fontSize = 16.sp                // slightly bigger label
-//                             )
-//
-//                             Spacer(modifier = Modifier.height(6.dp))
-//
-//                             Text(
-//                                 text = "5,000",
-//                                 color = colorResource(id = R.color.yale_blue),
-//                                 fontSize = 28.sp,               // big emphasis
-//                                 fontWeight = FontWeight.SemiBold
-//                             )
-//                         }
-//                     }
-//                     Box(
-//                         modifier = Modifier
-//                             .background(
-//                                 colorResource(id = R.color.seaweed),
-//                                 RoundedCornerShape(20.dp)
-//                             )
-//                             .padding(horizontal = 12.dp, vertical = 8.dp)
-//                     ) {
-//                         Text(
-//                             "Status: Above average ",
-//                             color = Color.White,
-//                             fontSize = 12.sp
-//                         )
-//                     }
-//
-//
-//                 }
-//
-//              }
-//
-//
-//          }
-//
-//
-//
+//                Button(
+//                    onClick = { if (currentPage < totalPages - 1) currentPage++ },
+//                    enabled = currentPage < totalPages - 1
+//                ) {
+//                    Text("Next")
+//                }
+//            }
 //        }
 
 
-        Column(modifier = Modifier.fillMaxWidth()) {
-
-
-            // Search Field by date
-            TextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text(text = "Search by date... yyyy-mm-dd") },
-                leadingIcon = {
-
-                    Icon(
-                        imageVector = FontAwesomeIcons.Solid.Search,
-                        contentDescription = "Search Icon",
-                        tint = colorResource(id = R.color.oxford_navy),
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(4.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    cursorColor = Color.Black,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent
-                ),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // 📄 PAGED ITEMS (ONLY 4)
-            pagedItems.forEach { item ->
-                DayCloseCard(item)
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // ⏮️ ⏭️ Pagination buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                    .padding(horizontal = 12.dp)
             ) {
-                Button(
-                    onClick = { if (currentPage > 0) currentPage-- },
-                    enabled = currentPage > 0
-                ) {
-                    Text("Previous")
-                }
 
-                Text(
-                    text = "Page ${currentPage + 1} of $totalPages",
-                    modifier = Modifier.align(Alignment.CenterVertically)
+                // Search field
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = {
+                        Text(
+                            "Search by date... yyyy-mm-dd",
+                            fontSize = 13.sp
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = FontAwesomeIcons.Solid.Search,
+                            contentDescription = "Search",
+                            tint = colorResource(R.color.oxford_navy),
+                            modifier = Modifier.size(19.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(
+                                onClick = { searchQuery = "" }
+                            ) {
+                                Icon(
+                                    Icons.Default.Close,
+                                    contentDescription = "Clear search",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 54.dp),
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = colorResource(R.color.seaweed),
+                        unfocusedBorderColor = colorResource(R.color.border_color),
+                        cursorColor = colorResource(R.color.seaweed)
+                    )
                 )
 
-                Button(
-                    onClick = { if (currentPage < totalPages - 1) currentPage++ },
-                    enabled = currentPage < totalPages - 1
-                ) {
-                    Text("Next")
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // History cards
+                if (pagedItems.isEmpty()) {
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Icon(
+                                Icons.Default.Receipt,
+                                contentDescription = null,
+                                modifier = Modifier.size(36.dp),
+                                tint = colorResource(R.color.gray)
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            Text(
+                                text = if (searchQuery.isBlank()) {
+                                    "No business records yet"
+                                } else {
+                                    "No matching records found"
+                                },
+                                color = colorResource(R.color.gray),
+                                fontSize = 14.sp
+                            )
+                        }
+                    }
+
+                } else {
+
+                    pagedItems.forEach { item ->
+
+                        DayCloseCard(
+                            item = item,
+                            onViewExpenses = {
+                                // Navigate using the unique business-day ID
+                                navController.navigate(
+                                    "daily_expense/${item.dayId}"
+                                )
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Pagination controls
+                if (totalPages > 1) {
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+
+                        OutlinedButton(
+                            onClick = {
+                                if (currentPage > 0) currentPage--
+                            },
+                            enabled = currentPage > 0,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(
+                                horizontal = 12.dp,
+                                vertical = 6.dp
+                            )
+                        ) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Previous", fontSize = 12.sp)
+                        }
+
+                        Text(
+                            text = "${currentPage + 1} / $totalPages",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = colorResource(R.color.oxford_navy)
+                        )
+
+                        OutlinedButton(
+                            onClick = {
+                                if (currentPage < totalPages - 1) currentPage++
+                            },
+                            enabled = currentPage < totalPages - 1,
+                            shape = RoundedCornerShape(10.dp),
+                            contentPadding = PaddingValues(
+                                horizontal = 12.dp,
+                                vertical = 6.dp
+                            )
+                        ) {
+                            Text("Next", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowForward,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                 }
             }
-        }
 
 
     }
@@ -657,77 +652,282 @@ fun HistoryScreenPreview() {
 }
 
 
+//
+//// reusable card (your UI, cleaned)
+//@Composable
+//fun DayCloseCard(item: DayCloseItem) {
+//    Box(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(vertical = 6.dp)
+//            .border(1.dp, Color(0xFF2E7D32), RoundedCornerShape(16.dp))
+//            .background(Color(0xFFE8F5E9), RoundedCornerShape(16.dp))
+//            .padding(16.dp)
+//    ) {
+//        Column {
+//            Text(
+//                item.date,
+//                fontWeight = FontWeight.Bold,
+//                color = colorResource(id = R.color.oxford_navy)
+//            )
+//
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                horizontalArrangement = Arrangement.spacedBy(4.dp)
+//            ) {
+//
+//
+//                SmallStatCard(
+//                    title = "Opening",
+//                    amount = "12,500",
+//                    icon = FontAwesomeIcons.Solid.MoneyBillAlt,
+//                    color = colorResource(id = R.color.seaweed),
+//                    modifier = Modifier.weight(1f)
+//                )
+//                SmallStatCard(
+//                    title = "Closing",
+//                    amount = "18,300",
+//                    icon = FontAwesomeIcons.Solid.MoneyBillWaveAlt,
+//                    color = colorResource(id = R.color.oxford_navy),
+//                    modifier = Modifier.weight(1f)
+//                )
+//            }
+//
+//            Spacer(modifier = Modifier.height(6.dp))
+//
+//            SummaryBox("Net Profit", item.netProfit)
+//            Spacer(modifier = Modifier.height(6.dp))
+//            SummaryBox("Total Expense", item.totalExpense)
+//
+//            Spacer(modifier = Modifier.height(6.dp))
+//
+//            Box(
+//                modifier = Modifier
+//                    .background(
+//                        colorResource(id = R.color.seaweed),
+//                        RoundedCornerShape(20.dp)
+//                    )
+//                    .padding(horizontal = 12.dp, vertical = 8.dp)
+//            ) {
+//                Text(item.status, color = Color.White, fontSize = 12.sp)
+//            }
+//        }
+//    }
+//}
 
-// reusable card (your UI, cleaned)
+
+
+
 @Composable
-fun DayCloseCard(item: DayCloseItem) {
-    Box(
+fun DayCloseCard(
+    item: DaySummary,
+    onViewExpenses: () -> Unit
+) {
+    val navy = colorResource(R.color.oxford_navy)
+    val yaleBlue = colorResource(R.color.yale_blue)
+    val seaweed = colorResource(R.color.seaweed)
+    val lightBackground = colorResource(R.color.light_background)
+
+    // Calculate daily business performance
+    val performance = calculateProfitPerformance(
+        netProfit = item.netProfit,
+        totalExpense = item.totalExpense
+    )
+
+    val currencyFormat = remember {
+        java.text.DecimalFormat("#,##0.00")
+    }
+
+    fun formatCash(amount: Float): String {
+        return "KES ${currencyFormat.format(amount)}"
+    }
+
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .border(1.dp, Color(0xFF2E7D32), RoundedCornerShape(16.dp))
-            .background(Color(0xFFE8F5E9), RoundedCornerShape(16.dp))
-            .padding(16.dp)
+            .padding(vertical = 5.dp),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
-        Column {
-            Text(
-                item.date,
-                fontWeight = FontWeight.Bold,
-                color = colorResource(id = R.color.oxford_navy)
-            )
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
 
+            // DATE AND PERFORMANCE BADGE
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-
-
-//                CashCard(
-//                    title = "Opening Cash",
-//                    amount = item.openingCash,
-//                    backgroundColor = R.color.light_background,
-//                    modifier = Modifier.weight(1f)
-//                )
-//                CashCard(
-//                    title = "Closing Cash",
-//                    amount = item.closingCash,
-//                    backgroundColor = R.color.light_background,
-//                    modifier = Modifier.weight(1f)
-//                )
-
-                SmallStatCard(
-                    title = "Opening",
-                    amount = "12,500",
-                    icon = FontAwesomeIcons.Solid.MoneyBillAlt,
-                    color = colorResource(id = R.color.seaweed),
-                    modifier = Modifier.weight(1f)
-                )
-                SmallStatCard(
-                    title = "Closing",
-                    amount = "18,300",
-                    icon = FontAwesomeIcons.Solid.MoneyBillWaveAlt,
-                    color = colorResource(id = R.color.oxford_navy),
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            SummaryBox("Net Profit", item.netProfit)
-            Spacer(modifier = Modifier.height(6.dp))
-            SummaryBox("Total Expense", item.totalExpense)
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            Box(
-                modifier = Modifier
-                    .background(
-                        colorResource(id = R.color.seaweed),
-                        RoundedCornerShape(20.dp)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    Icon(
+                        Icons.Default.CalendarToday,
+                        contentDescription = null,
+                        tint = seaweed,
+                        modifier = Modifier.size(17.dp)
                     )
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+
+                    Text(
+                        text = item.date,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = navy
+                    )
+                }
+
+                // Performance badge
+                Surface(
+                    color = performance.color.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(20.dp)
+                ) {
+                    Text(
+                        text = performance.label,
+                        modifier = Modifier.padding(
+                            horizontal = 10.dp,
+                            vertical = 5.dp
+                        ),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = performance.color
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // OPENING AND CLOSING CASH
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(item.status, color = Color.White, fontSize = 12.sp)
+                HistoryStat(
+                    title = "Opening Cash",
+                    amount = formatCash(item.openingCash),
+                    modifier = Modifier.weight(1f),
+                    accentColor = seaweed
+                )
+
+                HistoryStat(
+                    title = "Closing Cash",
+                    amount = item.closingCash?.let {
+                        formatCash(it)
+                    } ?: "Not closed",
+                    modifier = Modifier.weight(1f),
+                    accentColor = yaleBlue
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // NET PROFIT
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = lightBackground,
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(
+                        horizontal = 12.dp,
+                        vertical = 10.dp
+                    ),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(
+                            "Net Profit",
+                            fontSize = 12.sp,
+                            color = navy
+                        )
+
+                        Text(
+                            text = item.netProfit?.let {
+                                formatCash(it)
+                            } ?: "Pending",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if ((item.netProfit ?: 0f) >= 0f) {
+                                seaweed
+                            } else {
+                                Color(0xFFD32F2F)
+                            }
+                        )
+                    }
+
+                    // Profit percentage
+                    Column(
+                        horizontalAlignment = Alignment.End
+                    ) {
+                        Text(
+                            "Profit margin",
+                            fontSize = 11.sp,
+                            color = Color.Gray
+                        )
+
+                        Text(
+                            "${"%.1f".format(performance.percentage)}%",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = performance.color
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // TOTAL EXPENSE AND VIEW EXPENSE BUTTON
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+
+                Column {
+                    Text(
+                        "Total Expense",
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+
+                    Text(
+                        formatCash(item.totalExpense),
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = navy
+                    )
+                }
+
+                TextButton(
+                    onClick = onViewExpenses,
+                    contentPadding = PaddingValues(
+                        horizontal = 8.dp,
+                        vertical = 4.dp
+                    )
+                ) {
+                    Text(
+                        "View Expenses",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = yaleBlue
+                    )
+
+                    Spacer(modifier = Modifier.width(3.dp))
+
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = "View expenses",
+                        modifier = Modifier.size(15.dp),
+                        tint = yaleBlue
+                    )
+                }
             }
         }
     }
@@ -735,30 +935,62 @@ fun DayCloseCard(item: DayCloseItem) {
 
 
 
-//reusable UI:
+
+
+
+
+
 @Composable
-fun SummaryBox(title: String, amount: String) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(
-                colorResource(id = R.color.light_background),
-                RoundedCornerShape(20.dp)
-            )
-            .padding(12.dp)
+fun HistoryStat(
+    title: String,
+    amount: String,
+    modifier: Modifier = Modifier,
+    accentColor: Color
+) {
+    Surface(
+        modifier = modifier,
+        color = colorResource(R.color.light_background),
+        shape = RoundedCornerShape(10.dp)
     ) {
-        Column {
-            Text(title, color = colorResource(id = R.color.seaweed))
-            Spacer(modifier = Modifier.height(4.dp))
+        Column(
+            modifier = Modifier.padding(
+                horizontal = 10.dp,
+                vertical = 9.dp
+            )
+        ) {
             Text(
-                amount,
-                fontSize = 28.sp,
+                text = title,
+                fontSize = 11.sp,
+                color = Color.Gray,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.height(5.dp))
+
+            Text(
+                text = amount,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
-                color = colorResource(id = R.color.yale_blue)
+                color = accentColor,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -821,5 +1053,69 @@ fun generateMockDayCloses(): List<DayCloseItem> {
 fun Int.formatMoney(): String {
     return "%,d".format(this)
 }
+
+
+
+
+///profit
+
+data class ProfitPerformance(
+    val percentage: Float,
+    val label: String,
+    val color: Color
+)
+
+@Composable
+fun calculateProfitPerformance(
+    netProfit: Float?,
+    totalExpense: Float
+): ProfitPerformance {
+
+    val profit = netProfit ?: 0f
+    val revenue = profit + totalExpense
+
+    val percentage = if (revenue > 0f) {
+        (profit / revenue) * 100f
+    } else {
+        0f
+    }
+
+    val seaweed = colorResource(R.color.seaweed)
+    val yaleBlue = colorResource(R.color.yale_blue)
+    val goldenOrange = colorResource(R.color.golden_orange)
+
+    return when {
+        profit < 0f -> ProfitPerformance(
+            percentage = percentage,
+            label = "Loss Day",
+            color = Color(0xFFD32F2F)
+        )
+
+        percentage >= 70f -> ProfitPerformance(
+            percentage = percentage,
+            label = "Excellent Day",
+            color = seaweed
+        )
+
+        percentage >= 60f -> ProfitPerformance(
+            percentage = percentage,
+            label = "Better Day",
+            color = seaweed
+        )
+
+        percentage >= 50f -> ProfitPerformance(
+            percentage = percentage,
+            label = "Average Day",
+            color = goldenOrange
+        )
+
+        else -> ProfitPerformance(
+            percentage = percentage,
+            label = "Low Profit",
+            color = yaleBlue
+        )
+    }
+}
+
 
 

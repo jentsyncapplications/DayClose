@@ -1,183 +1,216 @@
-//@OptIn(ExperimentalMaterial3Api::class, ExperimentalPagerApi::class)
+//
 //@Composable
-//fun DailyExpenseScreen(navController: NavController, dateId: String) {
+//fun HistoryScreen(
+//    navController: NavController
+//) {
+//    val viewModel: DayCloseViewModel = koinViewModel()
 //
-//    val backgroundColor = colorResource(id = R.color.seaweed)
+//    // Observe all business-day summaries
+//    val summaries by viewModel
+//        .getAllDaySummaries()
+//        .collectAsState(initial = emptyList())
 //
-//    // --- Mock categories & expenses ---
-//    val categories = listOf("Bills", "Food", "Transport", "Shopping", "Others")
-//    val expensesData = mapOf(
-//        "Bills" to listOf(
-//            Expense("Electricity", 2500, "Monthly electricity bill"),
-//            Expense("Water", 1200, "Monthly water bill")
-//        ),
-//        "Food" to listOf(
-//            Expense("Lunch", 500, "Lunch at restaurant"),
-//            Expense("Groceries", 2000, "Weekly groceries")
-//        ),
-//        "Transport" to listOf(
-//            Expense("Taxi", 800, "Airport ride"),
-//            Expense("Fuel", 1500, "Fuel for the car")
-//        ),
-//        "Shopping" to listOf(
-//            Expense("Clothes", 3500, "Bought a jacket"),
-//            Expense("Shoes", 2000, "Sneakers")
-//        ),
-//        "Others" to listOf(
-//            Expense("Gift", 1000, "Birthday gift"),
-//            Expense("Donation", 500, "Charity donation")
-//        )
-//    )
+//    var searchQuery by remember { mutableStateOf("") }
+//    var currentPage by remember { mutableIntStateOf(0) }
 //
-//    val pagerState = rememberPagerState()
-//    val coroutineScope = rememberCoroutineScope()
+//    val itemsPerPage = 4
 //
-//    Scaffold(
-//        topBar = {
-//            TopAppBar(
-//                title = { Text("Expense Details", color = Color.White) },
-//                navigationIcon = {
-//                    IconButton(onClick = { navController.popBackStack() }) {
-//                        Icon(
-//                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-//                            contentDescription = "Back",
-//                            tint = Color.White
-//                        )
-//                    }
-//                },
-//                colors = TopAppBarDefaults.topAppBarColors(containerColor = backgroundColor)
-//            )
+//    // Search and sort records by newest first
+//    val filteredItems = remember(summaries, searchQuery) {
+//        summaries
+//            .sortedByDescending { it.timestamp }
+//            .filter {
+//                it.date.contains(searchQuery.trim(), ignoreCase = true)
+//            }
+//    }
+//
+//    // Calculate pagination
+//    val totalPages = if (filteredItems.isEmpty()) {
+//        0
+//    } else {
+//        (filteredItems.size + itemsPerPage - 1) / itemsPerPage
+//    }
+//
+//    // Reset page when the search query changes
+//    LaunchedEffect(searchQuery) {
+//        currentPage = 0
+//    }
+//
+//    // Keep page within valid bounds after database updates
+//    LaunchedEffect(totalPages) {
+//        if (totalPages == 0) {
+//            currentPage = 0
+//        } else if (currentPage >= totalPages) {
+//            currentPage = totalPages - 1
 //        }
-//    ) { innerPadding ->
+//    }
 //
-//        Column(
-//            modifier = Modifier
-//                .fillMaxSize()
-//                .padding(innerPadding)
-//                .background(colorResource(id = R.color.gray))
-//        ) {
+//    // Get records for the current page
+//    val pagedItems = remember(filteredItems, currentPage) {
+//        filteredItems.drop(currentPage * itemsPerPage)
+//            .take(itemsPerPage)
+//    }
 //
-//            // --- Scrollable Pill Tabs ---
-//            ScrollableTabRow(
-//                selectedTabIndex = pagerState.currentPage,
-//                edgePadding = 12.dp,
-//                containerColor = Color.Transparent,
-//                divider = {}, // No divider
-//                indicator = {} // No default indicator
-//            ) {
-//                categories.forEachIndexed { index, title ->
-//                    val selected = pagerState.currentPage == index
-//                    Tab(
-//                        selected = selected,
-//                        onClick = { coroutineScope.launch { pagerState.animateScrollToPage(index) } },
-//                        modifier = Modifier
-//                            .padding(horizontal = 4.dp)
-//                            .clip(RoundedCornerShape(12.dp))
-//                            .background(
-//                                if (selected) colorResource(id = R.color.tabSelected)
-//                                else colorResource(id = R.color.tabUnselected)
-//                            )
+//    Column(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .padding(horizontal = 12.dp)
+//    ) {
+//
+//        // Search field
+//        OutlinedTextField(
+//            value = searchQuery,
+//            onValueChange = { searchQuery = it },
+//            placeholder = {
+//                Text(
+//                    "Search by date... yyyy-mm-dd",
+//                    fontSize = 13.sp
+//                )
+//            },
+//            leadingIcon = {
+//                Icon(
+//                    imageVector = FontAwesomeIcons.Solid.Search,
+//                    contentDescription = "Search",
+//                    tint = colorResource(R.color.oxford_navy),
+//                    modifier = Modifier.size(19.dp)
+//                )
+//            },
+//            trailingIcon = {
+//                if (searchQuery.isNotEmpty()) {
+//                    IconButton(
+//                        onClick = { searchQuery = "" }
 //                    ) {
-//                        Text(
-//                            text = title,
-//                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
-//                            color = if (selected) Color.White else Color.Gray,
-//                            fontWeight = FontWeight.Medium
+//                        Icon(
+//                            Icons.Default.Close,
+//                            contentDescription = "Clear search",
+//                            modifier = Modifier.size(18.dp)
 //                        )
 //                    }
 //                }
+//            },
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .heightIn(min = 54.dp),
+//            singleLine = true,
+//            shape = RoundedCornerShape(12.dp),
+//            colors = OutlinedTextFieldDefaults.colors(
+//                focusedContainerColor = Color.White,
+//                unfocusedContainerColor = Color.White,
+//                focusedBorderColor = colorResource(R.color.seaweed),
+//                unfocusedBorderColor = colorResource(R.color.border_color),
+//                cursorColor = colorResource(R.color.seaweed)
+//            )
+//        )
+//
+//        Spacer(modifier = Modifier.height(8.dp))
+//
+//        // History cards
+//        if (pagedItems.isEmpty()) {
+//
+//            Box(
+//                modifier = Modifier
+//                    .fillMaxWidth()
+//                    .padding(vertical = 40.dp),
+//                contentAlignment = Alignment.Center
+//            ) {
+//                Column(
+//                    horizontalAlignment = Alignment.CenterHorizontally
+//                ) {
+//                    Icon(
+//                        Icons.Default.Receipt,
+//                        contentDescription = null,
+//                        modifier = Modifier.size(36.dp),
+//                        tint = colorResource(R.color.gray)
+//                    )
+//
+//                    Spacer(modifier = Modifier.height(8.dp))
+//
+//                    Text(
+//                        text = if (searchQuery.isBlank()) {
+//                            "No business records yet"
+//                        } else {
+//                            "No matching records found"
+//                        },
+//                        color = colorResource(R.color.gray),
+//                        fontSize = 14.sp
+//                    )
+//                }
 //            }
 //
-//            Spacer(modifier = Modifier.height(12.dp))
+//        } else {
 //
-//            // --- Horizontal Pager for Tab Content ---
-//            HorizontalPager(
-//                count = categories.size,
-//                state = pagerState,
-//                modifier = Modifier.fillMaxSize()
-//            ) { page ->
+//            pagedItems.forEach { item ->
 //
-//                val selectedCategory = categories[page]
-//                val expenses = expensesData[selectedCategory] ?: emptyList()
-//
-//                if (expenses.isEmpty()) {
-//                    Box(
-//                        modifier = Modifier.fillMaxSize(),
-//                        contentAlignment = Alignment.Center
-//                    ) {
-//                        Text(
-//                            text = "No expenses in $selectedCategory",
-//                            color = colorResource(id = R.color.gray),
-//                            fontSize = 16.sp
+//                DayCloseCard(
+//                    item = item,
+//                    onViewExpenses = {
+//                        // Navigate using the unique business-day ID
+//                        navController.navigate(
+//                            "daily_expense/${item.dayId}"
 //                        )
 //                    }
-//                } else {
-//                    Column(
-//                        modifier = Modifier
-//                            .verticalScroll(rememberScrollState())
-//                            .padding(horizontal = 16.dp, vertical = 8.dp)
-//                    ) {
-//                        expenses.forEach { expense ->
-//                            Card(
-//                                modifier = Modifier
-//                                    .fillMaxWidth()
-//                                    .padding(vertical = 8.dp)
-//                                    .clickable { /* Navigate to details */ },
-//                                shape = RoundedCornerShape(8.dp),
-//                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-//                                colors = CardDefaults.cardColors(containerColor = Color.White)
-//                            ) {
-//                                Column(modifier = Modifier.padding(16.dp)) {
-//                                    Row(
-//                                        modifier = Modifier.fillMaxWidth(),
-//                                        horizontalArrangement = Arrangement.SpaceBetween,
-//                                        verticalAlignment = Alignment.CenterVertically
-//                                    ) {
-//                                        Column {
-//                                            Text(
-//                                                text = "Category: $selectedCategory",
-//                                                fontSize = 14.sp,
-//                                                fontWeight = FontWeight.SemiBold,
-//                                                color = colorResource(id = R.color.gray)
-//                                            )
-//                                            Spacer(modifier = Modifier.height(4.dp))
-//                                            Text(
-//                                                text = "KES ${expense.amount}",
-//                                                fontSize = 22.sp,
-//                                                fontWeight = FontWeight.Bold,
-//                                                color = colorResource(id = R.color.yale_blue)
-//                                            )
-//                                        }
-//                                    }
+//                )
+//            }
+//        }
 //
-//                                    Spacer(modifier = Modifier.height(12.dp))
+//        Spacer(modifier = Modifier.height(8.dp))
 //
-//                                    Text(
-//                                        text = expense.description,
-//                                        fontSize = 16.sp,
-//                                        color = colorResource(id = R.color.gray),
-//                                        maxLines = 2,
-//                                        overflow = TextOverflow.Ellipsis
-//                                    )
-//                                }
-//                            }
-//                        }
-//                    }
+//        // Pagination controls
+//        if (totalPages > 1) {
+//
+//            Row(
+//                modifier = Modifier.fillMaxWidth(),
+//                verticalAlignment = Alignment.CenterVertically,
+//                horizontalArrangement = Arrangement.SpaceBetween
+//            ) {
+//
+//                OutlinedButton(
+//                    onClick = {
+//                        if (currentPage > 0) currentPage--
+//                    },
+//                    enabled = currentPage > 0,
+//                    shape = RoundedCornerShape(10.dp),
+//                    contentPadding = PaddingValues(
+//                        horizontal = 12.dp,
+//                        vertical = 6.dp
+//                    )
+//                ) {
+//                    Icon(
+//                        Icons.AutoMirrored.Filled.ArrowBack,
+//                        contentDescription = null,
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                    Spacer(modifier = Modifier.width(4.dp))
+//                    Text("Previous", fontSize = 12.sp)
+//                }
+//
+//                Text(
+//                    text = "${currentPage + 1} / $totalPages",
+//                    fontSize = 13.sp,
+//                    fontWeight = FontWeight.SemiBold,
+//                    color = colorResource(R.color.oxford_navy)
+//                )
+//
+//                OutlinedButton(
+//                    onClick = {
+//                        if (currentPage < totalPages - 1) currentPage++
+//                    },
+//                    enabled = currentPage < totalPages - 1,
+//                    shape = RoundedCornerShape(10.dp),
+//                    contentPadding = PaddingValues(
+//                        horizontal = 12.dp,
+//                        vertical = 6.dp
+//                    )
+//                ) {
+//                    Text("Next", fontSize = 12.sp)
+//                    Spacer(modifier = Modifier.width(4.dp))
+//                    Icon(
+//                        Icons.AutoMirrored.Filled.ArrowForward,
+//                        contentDescription = null,
+//                        modifier = Modifier.size(16.dp)
+//                    )
 //                }
 //            }
 //        }
 //    }
-//}
-//
-//// --- Mock Expense Data Class ---
-//data class Expense(
-//    val name: String,
-//    val amount: Int,
-//    val description: String
-//)
-//
-//@Preview(showBackground = true)
-//@Composable
-//fun DailyExpenseScreenPreview() {
-//    DailyExpenseScreen(navController = rememberNavController(), dateId = "2026-01-29")
 //}
