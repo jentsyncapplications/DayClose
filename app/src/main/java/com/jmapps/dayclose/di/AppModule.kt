@@ -4,9 +4,11 @@ package com.jmapps.dayclose.di
 
 
 
+import com.jmapps.dayclose.data.datastore.BusinessProfilePreference
 import com.jmapps.dayclose.data.local_data.AppDataBase
 import com.jmapps.dayclose.repository.DayDataRepository
 import com.jmapps.dayclose.repository.DayExpenseRepository
+import com.jmapps.dayclose.viewmodel.BusinessProfilePreferenceViewModel
 import com.jmapps.dayclose.viewmodel.DayDataViewModel
 import com.jmapps.dayclose.viewmodel.DayExpenseViewModel
 import org.koin.dsl.module
@@ -27,4 +29,7 @@ val appModule = module {
     viewModel{ DayExpenseViewModel(get()) }
 
 
+
+    single { BusinessProfilePreference(get()) }
+    viewModel { BusinessProfilePreferenceViewModel(get()) }
 }

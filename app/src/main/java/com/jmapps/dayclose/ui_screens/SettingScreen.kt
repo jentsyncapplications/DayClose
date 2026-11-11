@@ -23,22 +23,31 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import com.jmapps.dayclose.R
+import com.jmapps.dayclose.navigationgraph.Screen
+import com.jmapps.dayclose.viewmodel.BusinessProfilePreferenceViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingScreen(
-    navController: NavController,
-//    onPrivacyPolicy: () -> Unit = {},
-//    onTermsOfService: () -> Unit = {},
-//    onFeedback: () -> Unit = {},
-//    onHelp: () -> Unit = {},
-//    onAbout: () -> Unit = {},
-//    onOnboarding: () -> Unit = {},
-//    onNotificationChanged: (Boolean) -> Unit = {}
+    navController: NavController
 ) {
+
+
+    val businessProfilePreferenceViewModel : BusinessProfilePreferenceViewModel = koinViewModel()
+
+    val businessName by businessProfilePreferenceViewModel.businessName.collectAsStateWithLifecycle(
+        initialValue = ""
+    )
+
+    val isProfileSet by businessProfilePreferenceViewModel.isProfileSet.collectAsStateWithLifecycle(
+        initialValue = false
+    )
+
 
     val navy = colorResource(R.color.oxford_navy)
     val seaweed = colorResource(R.color.seaweed)
@@ -105,10 +114,14 @@ fun SettingScreen(
                 SettingsItem(
                     icon = Icons.Outlined.Business,
                     title = "Manage Business",
-                    subtitle = "Set up your business name",
+                    subtitle = if (isProfileSet) {
+                        "Manage your business information"
+                    } else {
+                        "Set up your business name"
+                    },
                     iconColor = yaleBlue,
                     onClick = {
-//                        navController.navigate("manage_business")
+                        navController.navigate(Screen.BusinessProfile.route)
 
                     }
                 )
@@ -187,7 +200,7 @@ fun SettingScreen(
                     subtitle = "App version and application information",
                     iconColor = navy,
                     onClick = {
-
+                        navController.navigate(Screen.AboutApp.route)
                     }
                 )
             }

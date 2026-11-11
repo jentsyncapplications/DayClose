@@ -3,14 +3,16 @@ package com.jmapps.dayclose.navigationgraph
 import androidx.compose.animation.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-//google is moving away fro accompanist navigation now we use androidx.navigation.compose
+//google is moving away from accompanist navigation now we use androidx.navigation.compose
 import androidx.navigation.NavHostController
 import com.jmapps.dayclose.ui_screens.AppDetailScreen
 import com.jmapps.dayclose.ui_screens.DailyExpenseScreen
 import com.jmapps.dayclose.ui_screens.HistoryScreen
 import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
+import com.jmapps.dayclose.ui_screens.AboutScreen
 import com.jmapps.dayclose.ui_screens.MainAppScreen
+import com.jmapps.dayclose.ui_screens.ManageBusinessScreen
 import com.jmapps.dayclose.ui_screens.SettingScreen
 
 /**
@@ -27,6 +29,11 @@ sealed class Screen(val route: String) {
 
 
     object DailyExpense: Screen("dailyExpense/{dateId}")
+
+
+    object BusinessProfile: Screen("businessProfile")
+
+    object AboutApp: Screen("aboutApp")
 
 }
 
@@ -86,9 +93,15 @@ fun AppNavHost(
             HistoryScreen(navController)
         }
 
-//        composable(Screen.DailyExpense.route){
-//            DailyExpenseScreen(navController)
-//        }
+        composable(Screen.BusinessProfile.route){
+            ManageBusinessScreen(navController)
+        }
+
+
+        composable(Screen.AboutApp.route){
+            AboutScreen(navController)
+        }
+
 
 
         composable(Screen.DailyExpense.route) { backStackEntry ->

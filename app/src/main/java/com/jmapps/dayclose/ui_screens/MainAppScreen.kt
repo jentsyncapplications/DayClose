@@ -39,8 +39,10 @@ import com.jmapps.dayclose.ui_screens.components.DayClosePopup
 import com.jmapps.dayclose.ui_screens.components.DayOpenPopup
 import com.jmapps.dayclose.ui_screens.components.EditDayClosePopup
 import com.jmapps.dayclose.ui_screens.components.EditDayOpenPopup
+import com.jmapps.dayclose.ui_screens.components.GreetingHeader
 import com.jmapps.dayclose.utils.getGreeting
 import com.jmapps.dayclose.utils.standardDateFormat
+import com.jmapps.dayclose.viewmodel.BusinessProfilePreferenceViewModel
 import com.jmapps.dayclose.viewmodel.DayDataViewModel
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
@@ -55,9 +57,18 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun MainAppScreen(navController: NavController) {
 
-//    var showOpeningDialog by remember { mutableStateOf(false) }
-//    var showClosingDialog by remember { mutableStateOf(false) }
-//    var showAddExpenseDialog by remember { mutableStateOf(false) }
+    val viewModel : BusinessProfilePreferenceViewModel = koinViewModel()
+
+
+    val businessName by viewModel.businessName.collectAsStateWithLifecycle(
+        initialValue = ""
+    )
+
+    val isProfileSet by viewModel.isProfileSet.collectAsStateWithLifecycle(
+        initialValue = false
+    )
+
+
     var showOpeningDialog by remember { mutableStateOf(false) }
     var showEditOpeningDialog by remember { mutableStateOf(false) }
 
@@ -126,11 +137,20 @@ fun MainAppScreen(navController: NavController) {
             // It pushes CONTENT below the status bar
             .statusBarsPadding()
     ) {
-        // Using a specialized header instead of putting it in the column
-        GreetingHeader(
-            userName = "jmapps Solutions",
-            onProfileClick = { navController.navigate("settings") }
 
+//        // Using a specialized header instead of putting it in the column
+//        GreetingHeader(
+//            userName = "jmapps Solutions",
+//            onProfileClick = { navController.navigate("settings") }
+//
+//        )
+
+        GreetingHeader(
+            businessName = businessName,
+            isProfileSet = isProfileSet,
+            onProfileClick = {
+                navController.navigate(Screen.BusinessProfile.route)
+            }
         )
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -543,59 +563,59 @@ fun ExpenseCard(amount: String) {
 }
 
 
-@Composable
-fun GreetingHeader(
-    userName: String,
-    onProfileClick: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(colorResource(id = R.color.light_background),
-                shape = RoundedCornerShape(16.dp)
-            )
-            .padding(
-                top = 16.dp,
-                start = 16.dp,
-                end = 16.dp,
-                bottom = 12.dp
-            )
-
-
-    ) {
-
-        // LEFT SIDE TEXT
-        Column(
-            modifier = Modifier.align(Alignment.CenterStart)
-        ) {
-            Text(
-                text = rememberGreeting(),
-                fontSize = 14.sp,
-                color = colorResource(id = R.color.oxford_navy)
-            )
-
-            Text(
-                text = userName,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = colorResource(id = R.color.seaweed)
-            )
-        }
-
-        // RIGHT SIDE USER ICON
-        IconButton(
-            onClick = onProfileClick,
-            modifier = Modifier.align(Alignment.TopEnd)
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "User profile",
-                tint = colorResource(id = R.color.seaweed),
-                modifier = Modifier.size(28.dp)
-            )
-        }
-    }
-}
+//@Composable
+//fun GreetingHeader(
+//    userName: String,
+//    onProfileClick: () -> Unit
+//) {
+//    Box(
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .background(colorResource(id = R.color.light_background),
+//                shape = RoundedCornerShape(16.dp)
+//            )
+//            .padding(
+//                top = 16.dp,
+//                start = 16.dp,
+//                end = 16.dp,
+//                bottom = 12.dp
+//            )
+//
+//
+//    ) {
+//
+//        // LEFT SIDE TEXT
+//        Column(
+//            modifier = Modifier.align(Alignment.CenterStart)
+//        ) {
+//            Text(
+//                text = rememberGreeting(),
+//                fontSize = 14.sp,
+//                color = colorResource(id = R.color.oxford_navy)
+//            )
+//
+//            Text(
+//                text = userName,
+//                fontSize = 20.sp,
+//                fontWeight = FontWeight.Bold,
+//                color = colorResource(id = R.color.seaweed)
+//            )
+//        }
+//
+//        // RIGHT SIDE USER ICON
+//        IconButton(
+//            onClick = onProfileClick,
+//            modifier = Modifier.align(Alignment.TopEnd)
+//        ) {
+//            Icon(
+//                imageVector = Icons.Default.Person,
+//                contentDescription = "User profile",
+//                tint = colorResource(id = R.color.seaweed),
+//                modifier = Modifier.size(28.dp)
+//            )
+//        }
+//    }
+//}
 
 
 
