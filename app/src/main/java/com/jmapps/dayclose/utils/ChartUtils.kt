@@ -70,23 +70,24 @@ fun getChartData(
     firstUseDate: LocalDate
 ): ChartData {
 
-    // Only closed business days with valid net profit.
+    // Only closed days with valid dates.
+    // Calculate Estimated Cash Inflow instead of Net Profit.
     val closedDays = summaries.mapNotNull { summary ->
 
-        val profit = summary.netProfit
+        val closingCash = summary.closingCash
             ?: return@mapNotNull null
-
-        if (summary.closingCash == null) {
-            return@mapNotNull null
-        }
 
         val date = parseSummaryDate(summary.date)
             ?: return@mapNotNull null
 
-        date to profit
+        val estimatedCashInflow =
+            closingCash - summary.openingCash + summary.totalExpense
+
+        date to estimatedCashInflow
     }
 
-    // Combine profits for entries belonging to the same date.
+    // Combine estimated cash inflow for entries
+    // belonging to the same date.
     val dailyTotals = closedDays
         .groupBy { it.first }
         .mapValues { (_, entries) ->
@@ -116,11 +117,12 @@ fun getChartData(
 
                 val date = period.startDate.plusDays(slot.toLong())
 
-                dailyTotals[date]?.let { profit ->
+                dailyTotals[date]?.let { inflow ->
+
                     ChartPoint(
                         slot = slot,
                         label = labels[slot],
-                        value = profit
+                        value = inflow
                     )
                 }
             }
@@ -149,11 +151,12 @@ fun getChartData(
 
                 val date = month.atDay(day)
 
-                dailyTotals[date]?.let { profit ->
+                dailyTotals[date]?.let { inflow ->
+
                     ChartPoint(
                         slot = day - 1,
                         label = day.toString(),
-                        value = profit
+                        value = inflow
                     )
                 }
             }
@@ -172,6 +175,7 @@ fun getChartData(
 
             val year = selectedDate.year
 
+            // Add daily estimated inflows into monthly totals.
             val monthlyTotals = dailyTotals
                 .filterKeys { it.year == year }
                 .entries
@@ -191,11 +195,12 @@ fun getChartData(
 
                 val yearMonth = YearMonth.of(year, month)
 
-                monthlyTotals[yearMonth]?.let { profit ->
+                monthlyTotals[yearMonth]?.let { inflow ->
+
                     ChartPoint(
                         slot = month - 1,
                         label = labels[month - 1],
-                        value = profit
+                        value = inflow
                     )
                 }
             }
@@ -208,5 +213,3 @@ fun getChartData(
         }
     }
 }
-
-

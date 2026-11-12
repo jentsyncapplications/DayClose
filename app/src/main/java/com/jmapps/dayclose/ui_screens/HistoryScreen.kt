@@ -40,6 +40,9 @@ import com.jmapps.dayclose.viewmodel.DayDataViewModel
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.automirrored.filled.ReceiptLong
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.geometry.Offset
@@ -230,7 +233,8 @@ fun HistoryScreen(navController: NavController) {
                         )
                     }
 
-                    NetProfitLineChart(
+
+                    CashInflowLineChart(
                         chartData = pageChartData,
                         range = range,
                         selectedDate = selectedDate
@@ -412,8 +416,9 @@ fun HistoryScreen(navController: NavController) {
 
 
 
+
 @Composable
-fun NetProfitLineChart(
+fun CashInflowLineChart(
     chartData: ChartData,
     range: TimeRange,
     selectedDate: LocalDate
@@ -421,23 +426,20 @@ fun NetProfitLineChart(
     val seaweed = colorResource(R.color.seaweed)
     val navy = colorResource(R.color.oxford_navy)
     val gridColor = colorResource(R.color.border_color)
+    val red = Color(0xFFD32F2F)
 
     val formatter = remember {
         java.text.DecimalFormat("#,##0")
     }
 
     val title = when (range) {
-        TimeRange.WEEKLY -> "Weekly Net Profit"
-        TimeRange.MONTHLY -> "Monthly Net Profit"
-        TimeRange.YEARLY -> "Yearly Net Profit"
+        TimeRange.WEEKLY -> "Weekly Estimated Cash Inflow"
+        TimeRange.MONTHLY -> "Monthly Estimated Cash Inflow"
+        TimeRange.YEARLY -> "Yearly Estimated Cash Inflow"
     }
 
     val subtitle = when (range) {
-        TimeRange.WEEKLY ->
-            selectedDate.format(
-                DateTimeFormatter.ofPattern("MMMM yyyy")
-            )
-
+        TimeRange.WEEKLY,
         TimeRange.MONTHLY ->
             selectedDate.format(
                 DateTimeFormatter.ofPattern("MMMM yyyy")
@@ -457,6 +459,7 @@ fun NetProfitLineChart(
             .padding(12.dp)
     ) {
 
+        // CHART TITLE
         Text(
             text = title,
             fontSize = 15.sp,
@@ -483,7 +486,7 @@ fun NetProfitLineChart(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "No closed-day profits for this period",
+                    text = "No closed-day cash inflow for this period",
                     color = Color.Gray,
                     fontSize = 13.sp
                 )
@@ -502,35 +505,37 @@ fun NetProfitLineChart(
                 val topPadding = 16.dp.toPx()
                 val bottomPadding = 35.dp.toPx()
 
-                val chartWidth = size.width -
-                        leftPadding - rightPadding
+                val chartWidth =
+                    size.width - leftPadding - rightPadding
 
-                val chartHeight = size.height -
-                        topPadding - bottomPadding
+                val chartHeight =
+                    size.height - topPadding - bottomPadding
 
                 val slotCount = chartData.slotCount
 
-                // Calculate X using fixed chart positions.
+                // X POSITION
                 fun getX(slot: Int): Float {
-
                     val position = if (slotCount > 1) {
                         slot.toFloat() / (slotCount - 1)
                     } else {
                         0.5f
                     }
 
-                    return leftPadding +
-                            position * chartWidth
+                    return leftPadding + position * chartWidth
                 }
 
-                // Include zero in the Y-axis.
+                // SORT DATA POINTS
+                val sortedPoints = chartData.points
+                    .sortedBy { it.slot }
+
+                // INCLUDE ZERO IN Y-AXIS
                 val minimum = minOf(
-                    chartData.points.minOf { it.value },
+                    sortedPoints.minOf { it.value },
                     0f
                 )
 
                 val maximum = maxOf(
-                    chartData.points.maxOf { it.value },
+                    sortedPoints.maxOf { it.value },
                     0f
                 )
 
@@ -543,22 +548,21 @@ fun NetProfitLineChart(
                 val maxY = maximum + padding
 
                 fun getY(value: Float): Float {
-
                     return topPadding +
                             ((maxY - value) / (maxY - minY)) *
                             chartHeight
                 }
 
+                // Y-AXIS TEXT
                 val textPaint = android.graphics.Paint(
                     android.graphics.Paint.ANTI_ALIAS_FLAG
                 ).apply {
-                    color = android.graphics.Color.rgb(
-                        5, 47, 95
-                    )
+                    color = android.graphics.Color.rgb(5, 47, 95)
                     textSize = 10.sp.toPx()
                     textAlign = android.graphics.Paint.Align.RIGHT
                 }
 
+                // X-AXIS TEXT
                 val datePaint = android.graphics.Paint(
                     android.graphics.Paint.ANTI_ALIAS_FLAG
                 ).apply {
@@ -567,7 +571,7 @@ fun NetProfitLineChart(
                     textAlign = android.graphics.Paint.Align.CENTER
                 }
 
-                // Horizontal grid lines.
+                // HORIZONTAL GRID LINES
                 for (i in 0..4) {
 
                     val value = maxY -
@@ -593,24 +597,20 @@ fun NetProfitLineChart(
                     )
                 }
 
-                // Zero-profit reference line.
-                if (minY < 0f && maxY > 0f) {
+                // ZERO REFERENCE LINE
+                val zeroY = getY(0f)
 
-                    val zeroY = getY(0f)
+                drawLine(
+                    color = navy.copy(alpha = 0.55f),
+                    start = Offset(leftPadding, zeroY),
+                    end = Offset(
+                        leftPadding + chartWidth,
+                        zeroY
+                    ),
+                    strokeWidth = 1.3.dp.toPx()
+                )
 
-                    drawLine(
-                        color = navy.copy(alpha = 0.4f),
-                        start = Offset(leftPadding, zeroY),
-                        end = Offset(
-                            leftPadding + chartWidth,
-                            zeroY
-                        ),
-                        strokeWidth = 1.2.dp.toPx()
-                    )
-                }
-
-                // X-axis labels.
-                // Avoid overcrowding in monthly charts.
+                // X-AXIS LABELS
                 val labelSlots = when (range) {
 
                     TimeRange.WEEKLY ->
@@ -618,8 +618,7 @@ fun NetProfitLineChart(
 
                     TimeRange.MONTHLY ->
                         chartData.axisLabels.indices.filter {
-                            it % 5 == 0 ||
-                                    it == slotCount - 1
+                            it % 5 == 0 || it == slotCount - 1
                         }
 
                     TimeRange.YEARLY ->
@@ -638,11 +637,7 @@ fun NetProfitLineChart(
                     )
                 }
 
-                // Sort points by their fixed positions.
-                val sortedPoints = chartData.points
-                    .sortedBy { it.slot }
-
-                // Draw connecting line.
+                // DRAW INFLOW LINE
                 val path = Path()
 
                 sortedPoints.forEachIndexed { index, point ->
@@ -663,12 +658,12 @@ fun NetProfitLineChart(
                     path = path,
                     color = seaweed,
                     style = Stroke(
-                        width = 1.8.dp.toPx(),
+                        width = 2.dp.toPx(),
                         cap = StrokeCap.Round
                     )
                 )
 
-                // Draw a circle at every available data point.
+                // DATA POINTS
                 sortedPoints.forEach { point ->
 
                     val center = Offset(
@@ -676,18 +671,22 @@ fun NetProfitLineChart(
                         getY(point.value)
                     )
 
+                    val pointColor = if (point.value < 0f) {
+                        red
+                    } else {
+                        seaweed
+                    }
+
+                    // White center
                     drawCircle(
                         color = Color.White,
                         radius = 5.dp.toPx(),
                         center = center
                     )
 
+                    // Colored outline
                     drawCircle(
-                        color = if (point.value < 0f) {
-                            Color(0xFFD32F2F)
-                        } else {
-                            seaweed
-                        },
+                        color = pointColor,
                         radius = 5.dp.toPx(),
                         center = center,
                         style = Stroke(
@@ -696,6 +695,45 @@ fun NetProfitLineChart(
                     )
                 }
             }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // CHART LEGEND
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(9.dp)
+                    .background(seaweed, CircleShape)
+            )
+
+            Spacer(Modifier.width(6.dp))
+
+            Text(
+                text = "Estimated Cash Inflow",
+                fontSize = 11.sp,
+                color = navy
+            )
+
+            Spacer(Modifier.width(14.dp))
+
+            Box(
+                modifier = Modifier
+                    .size(9.dp)
+                    .background(red, CircleShape)
+            )
+
+            Spacer(Modifier.width(6.dp))
+
+            Text(
+                text = "Negative inflow",
+                fontSize = 11.sp,
+                color = navy
+            )
         }
     }
 }
@@ -933,7 +971,6 @@ fun HistoryScreenPreview() {
 
 
 
-
 @Composable
 fun DayCloseCard(
     item: DaySummary,
@@ -944,25 +981,54 @@ fun DayCloseCard(
     val seaweed = colorResource(R.color.seaweed)
     val lightBackground = colorResource(R.color.light_background)
 
-    // Calculate daily business performance
-    val performance = calculateProfitPerformance(
-        netProfit = item.netProfit,
-        totalExpense = item.totalExpense
-    )
+    val red = Color(0xFFD32F2F)
+    val gray = Color.Gray
 
     val currencyFormat = remember {
         java.text.DecimalFormat("#,##0.00")
     }
 
-    fun formatCash(amount: Float): String {
-        return "${currencyFormat.format(amount)}"
+    fun formatCash(amount: Float): String =
+        currencyFormat.format(amount)
+
+    val cashSummary = remember(
+        item.openingCash,
+        item.closingCash,
+        item.totalExpense
+    ) {
+        calculateCashSummary(item)
+    }
+
+    val isClosed = cashSummary != null
+    val inflow = cashSummary?.estimatedCashInflow ?: 0f
+    val inflowRate = cashSummary?.inflowRate
+
+    val statusLabel = when {
+        !isClosed -> "Day Open"
+        inflow < 0f -> "Cash Discrepancy"
+        inflow > 0f -> "Good Day"
+        else -> "No Cash Inflow"
+    }
+
+    val statusColor = when {
+        !isClosed -> yaleBlue
+        inflow < 0f -> red
+        inflow > 0f -> seaweed
+        else -> gray
+    }
+
+    val inflowColor = when {
+        !isClosed -> gray
+        inflow < 0f -> red
+        inflow > 0f -> seaweed
+        else -> navy
     }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 5.dp),
-        shape = RoundedCornerShape(14.dp),
+            .padding(vertical = 6.dp),
+        shape = RoundedCornerShape(18.dp),
         colors = CardDefaults.cardColors(
             containerColor = Color.White
         ),
@@ -971,24 +1037,24 @@ fun DayCloseCard(
         )
     ) {
         Column(
-            modifier = Modifier.padding(12.dp)
+            modifier = Modifier.padding(15.dp)
         ) {
 
-            // DATE AND PERFORMANCE BADGE
+            // DATE AND DAY STATUS
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(7.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
-                        Icons.Default.CalendarToday,
+                        imageVector = Icons.Default.CalendarToday,
                         contentDescription = null,
-                        tint = seaweed,
-                        modifier = Modifier.size(17.dp)
+                        tint = yaleBlue,
+                        modifier = Modifier.size(18.dp)
                     )
 
                     Text(
@@ -999,29 +1065,131 @@ fun DayCloseCard(
                     )
                 }
 
-                // Performance badge
                 Surface(
-                    color = performance.color.copy(alpha = 0.12f),
-                    shape = RoundedCornerShape(20.dp)
+                    color = statusColor.copy(alpha = 0.12f),
+                    shape = RoundedCornerShape(50)
                 ) {
-                    Text(
-                        text = performance.label,
+                    Row(
                         modifier = Modifier.padding(
                             horizontal = 10.dp,
-                            vertical = 5.dp
+                            vertical = 6.dp
                         ),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = performance.color
-                    )
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(7.dp)
+                                .background(
+                                    statusColor,
+                                    CircleShape
+                                )
+                        )
+
+                        Text(
+                            text = statusLabel,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = statusColor
+                        )
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // ESTIMATED CASH INFLOW - PRIMARY METRIC
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(15.dp),
+                color = lightBackground
+            ) {
+                Column(
+                    modifier = Modifier.padding(15.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Estimated Cash Inflow",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = navy
+                        )
+
+                        Icon(
+                            imageVector = Icons.Default.AccountBalanceWallet,
+                            contentDescription = null,
+                            tint = yaleBlue,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(7.dp))
+
+                    Text(
+                        text = if (isClosed) {
+                            "${if (inflow > 0f) "+" else ""}${formatCash(inflow)}"
+                        } else {
+                            "Pending"
+                        },
+                        fontSize = 27.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = inflowColor
+                    )
+
+                    Spacer(modifier = Modifier.height(5.dp))
+
+                    Text(
+                        text = "Closing − Opening + Expenses",
+                        fontSize = 10.sp,
+                        color = gray
+                    )
+
+                    if (isClosed && inflowRate != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        HorizontalDivider(
+                            color = navy.copy(alpha = 0.10f)
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Inflow rate",
+                                fontSize = 11.sp,
+                                color = gray
+                            )
+
+                            Text(
+                                text = "${if (inflowRate > 0f) "+" else ""}${
+                                    String.format(
+                                        java.util.Locale.getDefault(),
+                                        "%.2f",
+                                        inflowRate
+                                    )
+                                }% of opening cash",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = inflowColor
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // OPENING AND CLOSING CASH
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
             ) {
                 HistoryStat(
                     title = "Opening Cash",
@@ -1040,106 +1208,78 @@ fun DayCloseCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(13.dp))
 
-            // NET PROFIT
+            // TOTAL EXPENSES
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                color = lightBackground,
-                shape = RoundedCornerShape(10.dp)
+                color = Color.Transparent
             ) {
                 Row(
                     modifier = Modifier.padding(
-                        horizontal = 12.dp,
-                        vertical = 10.dp
+                        vertical = 4.dp
                     ),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Column {
-                        Text(
-                            "Net Profit",
-                            fontSize = 12.sp,
-                            color = navy
-                        )
-
-                        Text(
-                            text = item.netProfit?.let {
-                                formatCash(it)
-                            } ?: "Pending",
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if ((item.netProfit ?: 0f) >= 0f) {
-                                seaweed
-                            } else {
-                                Color(0xFFD32F2F)
-                            }
-                        )
-                    }
-
-                    // Profit percentage
-                    Column(
-                        horizontalAlignment = Alignment.End
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
-                        Text(
-                            "Profit margin",
-                            fontSize = 11.sp,
-                            color = Color.Gray
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ReceiptLong,
+                            contentDescription = null,
+                            tint = yaleBlue,
+                            modifier = Modifier.size(17.dp)
                         )
 
                         Text(
-                            "${"%.1f".format(performance.percentage)}%",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = performance.color
+                            text = "Total Expenses",
+                            fontSize = 12.sp,
+                            color = gray
                         )
                     }
+
+                    Text(
+                        text = formatCash(item.totalExpense),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = navy
+                    )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // TOTAL EXPENSE AND VIEW EXPENSE BUTTON
+            HorizontalDivider(
+                color = lightBackground,
+                thickness = 1.dp
+            )
+
+            // VIEW EXPENSES
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                horizontalArrangement = Arrangement.End
             ) {
-
-                Column {
-                    Text(
-                        "Total Expense",
-                        fontSize = 12.sp,
-                        color = Color.Gray
-                    )
-
-                    Text(
-                        formatCash(item.totalExpense),
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = navy
-                    )
-                }
-
                 TextButton(
                     onClick = onViewExpenses,
                     contentPadding = PaddingValues(
-                        horizontal = 8.dp,
-                        vertical = 4.dp
+                        horizontal = 6.dp,
+                        vertical = 5.dp
                     )
                 ) {
                     Text(
-                        "View Expenses",
+                        text = "View Expenses",
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = yaleBlue
                     )
 
-                    Spacer(modifier = Modifier.width(3.dp))
+                    Spacer(modifier = Modifier.width(5.dp))
 
                     Icon(
-                        Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = "View expenses",
+                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
                         modifier = Modifier.size(15.dp),
                         tint = yaleBlue
                     )
@@ -1148,8 +1288,6 @@ fun DayCloseCard(
         }
     }
 }
-
-
 
 
 
@@ -1199,67 +1337,27 @@ fun HistoryStat(
 
 
 
-
-
-
-///profit
-
-data class ProfitPerformance(
-    val percentage: Float,
-    val label: String,
-    val color: Color
+data class CashSummary(
+    val estimatedCashInflow: Float,
+    val inflowRate: Float?
 )
 
-@Composable
-fun calculateProfitPerformance(
-    netProfit: Float?,
-    totalExpense: Float
-): ProfitPerformance {
+fun calculateCashSummary(item: DaySummary): CashSummary? {
+    val closing = item.closingCash ?: return null
 
-    val profit = netProfit ?: 0f
-    val revenue = profit + totalExpense
+    val estimatedInflow =
+        closing - item.openingCash + item.totalExpense
 
-    val percentage = if (revenue > 0f) {
-        (profit / revenue) * 100f
+    val inflowRate = if (item.openingCash > 0f) {
+        (estimatedInflow / item.openingCash) * 100f
     } else {
-        0f
+        null
     }
 
-    val seaweed = colorResource(R.color.seaweed)
-    val yaleBlue = colorResource(R.color.yale_blue)
-    val goldenOrange = colorResource(R.color.golden_orange)
-
-    return when {
-        profit < 0f -> ProfitPerformance(
-            percentage = percentage,
-            label = "Loss Day",
-            color = Color(0xFFD32F2F)
-        )
-
-        percentage >= 70f -> ProfitPerformance(
-            percentage = percentage,
-            label = "Excellent Day",
-            color = seaweed
-        )
-
-        percentage >= 60f -> ProfitPerformance(
-            percentage = percentage,
-            label = "Better Day",
-            color = seaweed
-        )
-
-        percentage >= 50f -> ProfitPerformance(
-            percentage = percentage,
-            label = "Average Day",
-            color = goldenOrange
-        )
-
-        else -> ProfitPerformance(
-            percentage = percentage,
-            label = "Low Profit",
-            color = yaleBlue
-        )
-    }
+    return CashSummary(
+        estimatedCashInflow = estimatedInflow,
+        inflowRate = inflowRate
+    )
 }
 
 

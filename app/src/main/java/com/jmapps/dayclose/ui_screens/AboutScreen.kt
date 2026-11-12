@@ -4,6 +4,7 @@ package com.jmapps.dayclose.ui_screens
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,11 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.navigation.NavController
 import com.jmapps.dayclose.R
 import java.time.Year
@@ -58,7 +61,7 @@ fun AboutScreen(
     // Replace these with your actual URLs and email.
     val privacyPolicyUrl = "https://yourdomain.com/privacy-policy"
     val termsUrl = "https://yourdomain.com/terms"
-    val developerEmail = "support@yourdomain.com"
+    val developerEmail = "support@jentsynctechnologies.com"
 
     fun openUrl(url: String) {
         val intent = Intent(Intent.ACTION_VIEW, url.toUri())
@@ -71,20 +74,6 @@ fun AboutScreen(
             putExtra(Intent.EXTRA_SUBJECT, "DayClose Support")
         }
         context.startActivity(intent)
-    }
-
-    fun shareApp() {
-        val intent = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(
-                Intent.EXTRA_TEXT,
-                "Check out Day Close – Close your day. Know your numbers."
-            )
-        }
-
-        context.startActivity(
-            Intent.createChooser(intent, "Share DayClose")
-        )
     }
 
     Scaffold(
@@ -136,20 +125,33 @@ fun AboutScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
 
-                Box(
-                    modifier = Modifier
-                        .size(85.dp)
-                        .background(
-                            color = yaleBlue.copy(alpha = 0.12f),
-                            shape = RoundedCornerShape(24.dp)
-                        ),
-                    contentAlignment = Alignment.Center
+//                Box(
+//                    modifier = Modifier
+//                        .size(85.dp)
+//                        .background(
+//                            color = yaleBlue.copy(alpha = 0.12f),
+//                            shape = RoundedCornerShape(24.dp)
+//                        ),
+//                    contentAlignment = Alignment.Center
+//                ) {
+//                    Icon(
+//                        imageVector = Icons.Outlined.AccountBalanceWallet,
+//                        contentDescription = "DayClose logo",
+//                        tint = yaleBlue,
+//                        modifier = Modifier.size(45.dp)
+//                    )
+//                }
+
+                Surface(
+                    modifier = Modifier.size(110.dp),
+                    shape = RoundedCornerShape(24.dp),
+                    color = yaleBlue.copy(alpha = 0.12f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Outlined.AccountBalanceWallet,
-                        contentDescription = "DayClose logo",
-                        tint = yaleBlue,
-                        modifier = Modifier.size(45.dp)
+                    Image(
+                        painter = painterResource(id = R.drawable.dayclose),
+                        contentDescription = "DayClose app logo",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                 }
 
@@ -272,15 +274,6 @@ fun AboutScreen(
 
                 AboutDivider(border)
 
-                AboutActionItem(
-                    icon = Icons.Outlined.Share,
-                    title = "Share DayClose",
-                    subtitle = "Recommend DayClose to others",
-                    iconColor = yaleBlue,
-                    onClick = {
-                        shareApp()
-                    }
-                )
             }
 
             // FOOTER
