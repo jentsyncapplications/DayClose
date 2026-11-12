@@ -1,6 +1,7 @@
 
 package com.jmapps.dayclose.ui_screens
 
+import android.content.Intent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -18,11 +19,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
@@ -36,7 +39,7 @@ import org.koin.androidx.compose.koinViewModel
 fun SettingScreen(
     navController: NavController
 ) {
-
+    val context = LocalContext.current
 
     val businessProfilePreferenceViewModel : BusinessProfilePreferenceViewModel = koinViewModel()
 
@@ -48,6 +51,40 @@ fun SettingScreen(
         initialValue = false
     )
 
+
+
+
+    // Replace these with your actual URLs and email.
+    val privacyPolicyUrl = "https://jentsyncapplications.github.io/day-close-app/privacy-policy.html"
+    val termsUrl = "https://jentsyncapplications.github.io/day-close-app/terms-of-service.html"
+    val developerEmail = "support@jentsynctechnologies.com"
+
+    fun openUrl(url: String) {
+        val intent = Intent(Intent.ACTION_VIEW, url.toUri())
+        context.startActivity(intent)
+    }
+
+    fun contactDeveloper() {
+        val intent = Intent(Intent.ACTION_SENDTO).apply {
+            data = "mailto:$developerEmail".toUri()
+            putExtra(Intent.EXTRA_SUBJECT, "Day Close Support")
+            putExtra(
+                Intent.EXTRA_TEXT,
+                """
+            Hello Day Close Support Team,
+
+            I need assistance with the Day Close application.
+
+            Issue / Message:
+
+
+            Thank you.
+            """.trimIndent()
+            )
+        }
+
+        context.startActivity(intent)
+    }
 
     val navy = colorResource(R.color.oxford_navy)
     val seaweed = colorResource(R.color.seaweed)
@@ -138,7 +175,7 @@ fun SettingScreen(
                     subtitle = "Learn how your data is handled",
                     iconColor = yaleBlue,
                     onClick = {
-
+                      openUrl(privacyPolicyUrl)
                     }
                 )
 
@@ -150,11 +187,21 @@ fun SettingScreen(
                     subtitle = "Rules and conditions of using DayClose",
                     iconColor = goldenOrange,
                     onClick = {
-
+                  openUrl(termsUrl)
                     }
                 )
 
                 SettingsDivider(color = border)
+
+//                SettingsItem(
+//                    icon = Icons.Outlined.Feedback,
+//                    title = "Send Feedback",
+//                    subtitle = "Share suggestions or report a problem",
+//                    iconColor = seaweed,
+//                    onClick = {
+//
+//                    }
+//                )
 
                 SettingsItem(
                     icon = Icons.Outlined.Feedback,
@@ -162,7 +209,27 @@ fun SettingScreen(
                     subtitle = "Share suggestions or report a problem",
                     iconColor = seaweed,
                     onClick = {
+                        val intent = Intent(Intent.ACTION_SENDTO).apply {
+                            data = "mailto:$developerEmail".toUri()
+                            putExtra(Intent.EXTRA_SUBJECT, "Day Close App Feedback")
+                            putExtra(
+                                Intent.EXTRA_TEXT,
+                                """
+                Hello Day Close Team,
 
+                I would like to share some feedback about the Day Close app.
+
+                Feedback Type:
+
+                My Feedback / Suggestion:
+
+
+                Thank you for developing Day Close!
+                """.trimIndent()
+                            )
+                        }
+
+                        context.startActivity(intent)
                     }
                 )
 
@@ -174,7 +241,7 @@ fun SettingScreen(
                     subtitle = "Get assistance using DayClose",
                     iconColor = yaleBlue,
                     onClick = {
-
+                   contactDeveloper()
                     }
                 )
             }
