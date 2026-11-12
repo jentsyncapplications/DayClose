@@ -15,7 +15,7 @@ android {
         minSdk = 26
         targetSdk = 37
         versionCode = 1
-        versionName = "1.0"
+        versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -78,16 +78,6 @@ dependencies {
 
 
 
-//// ==========================
-////  Room Database (Local Storage)
-//// ==========================
-//    implementation("androidx.room:room-runtime:2.6.1")
-//    ksp("androidx.room:room-compiler:2.6.1")
-//// Coroutine support for Room (for suspend functions)
-//    implementation("androidx.room:room-ktx:2.6.1")
-
-
-
     // ==========================
 //  Room Database (Local Storage)
 // ==========================
@@ -128,15 +118,6 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
 // Coroutine support for background threading
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
-
-
-    //graph and charts
-    // Vico Charts (Compose + M3)
-//    implementation("com.patrykandpatrick.vico:compose-m3:2.4.3")
-//    implementation("com.patrykandpatrick.vico:core:2.4.3")
-    implementation("com.patrykandpatrick.vico:compose:1.13.0")
-    implementation("com.patrykandpatrick.vico:compose-m3:1.13.0") // For Material 3 integration
-    implementation("com.patrykandpatrick.vico:core:1.13.0")
 
 
 }

@@ -198,9 +198,9 @@ fun AboutScreen(
                 border = border
             ) {
                 Text(
-                    text = "DayClose helps you manage daily business cash flow, " +
-                            "track expenses, monitor opening and closing balances, " +
-                            "and understand your daily performance.",
+                    text = "Day Close helps business owners keep track of their daily cash activities with ease. Record opening and closing cash, track expenses, monitor daily performance, and review business trends over time.\n" +
+                            "\n" +
+                            "Stay informed, stay organized, and keep your business finances in check — one day at a time!",
                     fontSize = 13.sp,
                     color = Color.DarkGray,
                     lineHeight = 21.sp
