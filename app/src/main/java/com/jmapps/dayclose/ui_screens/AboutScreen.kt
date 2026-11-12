@@ -59,8 +59,8 @@ fun AboutScreen(
     }
 
     // Replace these with your actual URLs and email.
-    val privacyPolicyUrl = "https://yourdomain.com/privacy-policy"
-    val termsUrl = "https://yourdomain.com/terms"
+    val privacyPolicyUrl = "https://jentsyncapplications.github.io/day-close-app/privacy-policy.html"
+    val termsUrl = "https://jentsyncapplications.github.io/day-close-app/terms-of-service.html"
     val developerEmail = "support@jentsynctechnologies.com"
 
     fun openUrl(url: String) {
