@@ -26,6 +26,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.jmapps.dayclose.R
 import com.jmapps.dayclose.utils.standardDateFormat
+import com.jmapps.dayclose.viewmodel.DayExpenseViewModel
+import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,6 +38,8 @@ fun EditExpensePopup(
     expenseCategory: String,
     expenseDescription: String?
 ) {
+
+    val dayExpenseViewModel: DayExpenseViewModel = koinViewModel()
     val today = standardDateFormat(System.currentTimeMillis())
 
     val seaweed = colorResource(id = R.color.seaweed)
@@ -107,14 +111,14 @@ fun EditExpensePopup(
                     verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
                     Text(
-                        text = "Add Expense",
+                        text = "Update Expense",
                         fontSize = 23.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
 
                     Text(
-                        text = "Add Business Expense for the day.",
+                        text = "Edit Business Expense for the day.",
                         fontSize = 13.sp,
                         color = Color.White.copy(alpha = 0.85f)
                     )
@@ -357,9 +361,16 @@ fun EditExpensePopup(
 
                             if (valid) {
 
+                                dayExpenseViewModel.updateExpense(
+                                    expenseId =expenseId,
+                                    totalExpense = totalExpense.toFloat(),
+                                    expenseCategory = expenseCategory,
+                                    expenseDescription = expenseDescription
+                                )
+
                                 Toast.makeText(
                                     context,
-                                    "Expense Added successfully",
+                                    "Expense updated successfully",
                                     Toast.LENGTH_SHORT
                                 ).show()
 
@@ -367,11 +378,6 @@ fun EditExpensePopup(
 
                             }
 
-
-
-//                            else {
-
-//                            }
                         },
                         interactionSource = interactionSource,
                         modifier = Modifier

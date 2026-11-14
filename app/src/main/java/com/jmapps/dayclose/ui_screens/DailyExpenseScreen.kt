@@ -41,6 +41,9 @@ import androidx.compose.material.icons.filled.Receipt
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.text.style.TextAlign
 import com.jmapps.dayclose.model.DayExpenseEntity
+import com.jmapps.dayclose.ui_screens.components.EditDayOpenPopup
+import com.jmapps.dayclose.ui_screens.components.EditExpensePopup
+import com.jmapps.dayclose.utils.standardDateFormat
 import com.jmapps.dayclose.viewmodel.DayExpenseViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -81,15 +84,27 @@ fun DailyExpenseScreen(
     val pagerState = rememberPagerState()
     val coroutineScope = rememberCoroutineScope()
 
+
+    var showEditExpenseDialog by remember { mutableStateOf(false) }
+
     // Store the selected expense using its unique expenseId
     var selectedExpenseId by remember {
         mutableStateOf<String?>(null)
     }
 
-    // Get the selected expense from the observed list
+
+    var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+
+// Retrieve the complete selected entity
     val selectedExpense = expenses.find {
         it.expenseId == selectedExpenseId
     }
+
+
+    val isCurrentDate = dateId == standardDateFormat(System.currentTimeMillis())
+
+
 
     // Clear selection when the selected category changes
     LaunchedEffect(pagerState.currentPage) {
@@ -126,29 +141,41 @@ fun DailyExpenseScreen(
         },
 
         // Bottom management bar appears only when an expense is selected
+//        bottomBar = {
+//            if (selectedExpense != null) {
+//                ExpenseManagementBar(
+//                    onEdit = {
+//                        val expenseId = selectedExpense.expenseId
+//
+//                        // TODO: Open your edit expense screen/dialog
+//                        // Pass expenseId to retrieve the expense.
+//
+//
+//
+//                    },
+//                    onDelete = {
+//                        val expenseId = selectedExpense.expenseId
+//
+//                        // TODO: Call your ViewModel delete function
+//                        // Example: dayExpenseViewModel.deleteExpense(expenseId)
+//
+//                        selectedExpenseId = null
+//                    },
+//                    onDismiss = {
+//                        selectedExpenseId = null
+//                    }
+//                )
+//            }
+//        }
+
         bottomBar = {
-            if (selectedExpense != null) {
+            if (selectedExpense != null && isCurrentDate) {
                 ExpenseManagementBar(
                     onEdit = {
-                        val expenseId = selectedExpense.expenseId
-
-                        // TODO: Open your edit expense screen/dialog
-                        // Pass expenseId to retrieve the expense.
-
-
-
+                        showEditExpenseDialog = true
                     },
                     onDelete = {
-                        val expenseId = selectedExpense.expenseId
-
-                        // TODO: Call your ViewModel delete function
-                        // Example: dayExpenseViewModel.deleteExpense(expenseId)
-
-
-
-
-
-                        selectedExpenseId = null
+                        showDeleteConfirmation = true
                     },
                     onDismiss = {
                         selectedExpenseId = null
@@ -295,15 +322,32 @@ fun DailyExpenseScreen(
                                 expense = expense,
                                 isSelected = isSelected,
 
+//                                onLongPress = {
+//                                    selectedExpenseId =
+//                                        if (isSelected) null
+//                                        else expense.expenseId
+//                                },
+//
+//
+//                                onClick = {
+//                                    selectedExpenseId = if (isSelected) {
+//                                        null
+//                                    } else {
+//                                        expense.expenseId
+//                                    }
+//                                }
+
+
                                 onLongPress = {
-                                    selectedExpenseId =
-                                        if (isSelected) null
-                                        else expense.expenseId
+                                    if (isCurrentDate) {
+                                        selectedExpenseId =
+                                            if (isSelected) null
+                                            else expense.expenseId
+                                    }
                                 },
 
                                 onClick = {
-                                    // Normal click can be used for details.
-                                    if (selectedExpenseId != null) {
+                                    if (isCurrentDate) {
                                         selectedExpenseId =
                                             if (isSelected) null
                                             else expense.expenseId
@@ -318,10 +362,125 @@ fun DailyExpenseScreen(
             }
         }
     }
+
+
+//    if (showEditExpenseDialog && selectedExpense != null) {
+//
+//        EditExpensePopup(
+//            onDismiss = {
+//                showEditExpenseDialog = false
+//            },
+//            expenseId = selectedExpense.expenseId,
+//            totalExpense = selectedExpense.totalExpense,
+//            expenseCategory = selectedExpense.expenseCategory,
+//            expenseDescription = selectedExpense.expenseDescription
+//        )
+//    }
+
+    if (showEditExpenseDialog &&
+        selectedExpense != null &&
+        isCurrentDate
+    ) {
+        EditExpensePopup(
+            onDismiss = {
+                showEditExpenseDialog = false
+            },
+            expenseId = selectedExpense.expenseId,
+            totalExpense = selectedExpense.totalExpense,
+            expenseCategory = selectedExpense.expenseCategory,
+            expenseDescription = selectedExpense.expenseDescription
+        )
+    }
+
+
+
+
+//    if (showDeleteConfirmation && selectedExpense != null) {
+    if (showDeleteConfirmation &&
+        selectedExpense != null &&
+        isCurrentDate
+    ) {
+        AlertDialog(
+            onDismissRequest = {
+                showDeleteConfirmation = false
+            },
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = Color(0xFFD32F2F),
+                    modifier = Modifier.size(30.dp)
+                )
+            },
+            title = {
+                Text(
+                    text = "Delete Expense?",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("Are you sure you want to delete this expense?")
+
+                    Text(
+                        text = selectedExpense.expenseCategory,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colorResource(R.color.yale_blue)
+                    )
+
+                    Text(
+                        text = "%,.2f".format(selectedExpense.totalExpense),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
+                        color = Color(0xFFD32F2F)
+                    )
+
+                    if (!selectedExpense.expenseDescription.isNullOrBlank()) {
+                        Text(
+                            text = selectedExpense.expenseDescription,
+                            color = Color.Gray,
+                            fontSize = 13.sp
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        dayExpenseViewModel.deleteExpense(
+                            selectedExpense.expenseId
+                        )
+
+                        showDeleteConfirmation = false
+                        selectedExpenseId = null
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFD32F2F)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        showDeleteConfirmation = false
+                    },
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Cancel")
+                }
+            },
+            shape = RoundedCornerShape(20.dp),
+            containerColor = Color.White
+        )
+    }
+
+
 }
-
-
-
 
 
 
@@ -330,15 +489,6 @@ fun DailyExpenseScreen(
 fun DailyExpenseScreenPreview() {
     DailyExpenseScreen(navController = rememberNavController(),"2026/01/03")
 }
-
-
-
-
-
-
-
-
-
 
 
 
@@ -442,6 +592,96 @@ fun ExpenseItemCard(
 
 
 
+//@Composable
+//fun ExpenseManagementBar(
+//    onEdit: () -> Unit,
+//    onDelete: () -> Unit,
+//    onDismiss: () -> Unit
+//) {
+//    Surface(
+//        color = Color.White,
+//        shadowElevation = 12.dp,
+//        tonalElevation = 3.dp
+//    ) {
+//        Row(
+//            modifier = Modifier
+//                .fillMaxWidth()
+//                .navigationBarsPadding()
+//                .padding(
+//                    horizontal = 20.dp,
+//                    vertical = 12.dp
+//                ),
+//            horizontalArrangement = Arrangement.spacedBy(12.dp),
+//            verticalAlignment = Alignment.CenterVertically
+//        ) {
+//
+//            // Close selection
+//            IconButton(
+//                onClick = onDismiss,
+//                modifier = Modifier.size(44.dp)
+//            ) {
+//                Icon(
+//                    Icons.Default.Close,
+//                    contentDescription = "Cancel selection",
+//                    tint = Color.Gray,
+//                    modifier = Modifier.size(22.dp)
+//                )
+//            }
+//
+//            // Edit action
+//            OutlinedButton(
+//                onClick = onEdit,
+//                modifier = Modifier
+//                    .weight(1f)
+//                    .height(46.dp),
+//                shape = RoundedCornerShape(12.dp),
+//                colors = ButtonDefaults.outlinedButtonColors(
+//                    contentColor = colorResource(R.color.yale_blue)
+//                )
+//            ) {
+//                Icon(
+//                    Icons.Default.Edit,
+//                    contentDescription = null,
+//                    modifier = Modifier.size(18.dp)
+//                )
+//
+//                Spacer(modifier = Modifier.width(8.dp))
+//
+//                Text(
+//                    "Edit",
+//                    fontWeight = FontWeight.SemiBold
+//                )
+//            }
+//
+//            // Delete action
+//            Button(
+//                onClick = onDelete,
+//                modifier = Modifier
+//                    .weight(1f)
+//                    .height(46.dp),
+//                shape = RoundedCornerShape(12.dp),
+//                colors = ButtonDefaults.buttonColors(
+//                    containerColor = Color(0xFFD32F2F),
+//                    contentColor = Color.White
+//                )
+//            ) {
+//                Icon(
+//                    Icons.Default.Delete,
+//                    contentDescription = null,
+//                    modifier = Modifier.size(18.dp)
+//                )
+//
+//                Spacer(modifier = Modifier.width(8.dp))
+//
+//                Text(
+//                    "Delete",
+//                    fontWeight = FontWeight.SemiBold
+//                )
+//            }
+//        }
+//    }
+//}
+
 @Composable
 fun ExpenseManagementBar(
     onEdit: () -> Unit,
@@ -450,41 +690,51 @@ fun ExpenseManagementBar(
 ) {
     Surface(
         color = Color.White,
-        shadowElevation = 12.dp,
-        tonalElevation = 3.dp
+        shadowElevation = 8.dp,
+        tonalElevation = 2.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
                 .padding(
-                    horizontal = 20.dp,
-                    vertical = 12.dp
+                    horizontal = 14.dp,
+                    vertical = 5.dp
                 ),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
 
-            // Close selection
-            IconButton(
+            // Modern circular dismiss button
+            Surface(
                 onClick = onDismiss,
-                modifier = Modifier.size(44.dp)
+                shape = RoundedCornerShape(12.dp),
+                color = colorResource(R.color.gray).copy(alpha = 0.5f),
+                modifier = Modifier.size(42.dp)
             ) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = "Cancel selection",
-                    tint = Color.Gray,
-                    modifier = Modifier.size(22.dp)
-                )
+                Box(
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Dismiss selection",
+                        tint = colorResource(R.color.oxford_navy),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
 
-            // Edit action
+            // Edit button
             OutlinedButton(
                 onClick = onEdit,
                 modifier = Modifier
                     .weight(1f)
-                    .height(46.dp),
+                    .height(42.dp),
                 shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(
+                    horizontal = 8.dp,
+                    vertical = 0.dp
+                ),
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = colorResource(R.color.yale_blue)
                 )
@@ -492,24 +742,29 @@ fun ExpenseManagementBar(
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(17.dp)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
 
                 Text(
                     "Edit",
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
                 )
             }
 
-            // Delete action
+            // Delete button
             Button(
                 onClick = onDelete,
                 modifier = Modifier
                     .weight(1f)
-                    .height(46.dp),
+                    .height(42.dp),
                 shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(
+                    horizontal = 8.dp,
+                    vertical = 0.dp
+                ),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFFD32F2F),
                     contentColor = Color.White
@@ -518,19 +773,21 @@ fun ExpenseManagementBar(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(17.dp)
                 )
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(Modifier.width(6.dp))
 
                 Text(
                     "Delete",
-                    fontWeight = FontWeight.SemiBold
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 13.sp
                 )
             }
         }
     }
 }
+
 
 
 
